@@ -1,16 +1,16 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@sveltejs/adapter-static@^3.0.6": "3.0.10_@sveltejs+kit@2.55.0__@sveltejs+vite-plugin-svelte@5.1.1___svelte@5.55.1___vite@6.4.1__svelte@5.55.1__typescript@5.6.3__vite@6.4.1_@sveltejs+vite-plugin-svelte@5.1.1__svelte@5.55.1__vite@6.4.1_svelte@5.55.1_typescript@5.6.3_vite@6.4.1",
-    "npm:@sveltejs/kit@^2.9.0": "2.55.0_@sveltejs+vite-plugin-svelte@5.1.1__svelte@5.55.1__vite@6.4.1_svelte@5.55.1_typescript@5.6.3_vite@6.4.1",
-    "npm:@sveltejs/vite-plugin-svelte@5": "5.1.1_svelte@5.55.1_vite@6.4.1",
-    "npm:@tauri-apps/api@2": "2.10.1",
-    "npm:@tauri-apps/cli@2": "2.10.1",
-    "npm:@tauri-apps/plugin-opener@2": "2.5.3",
-    "npm:svelte-check@4": "4.4.6_svelte@5.55.1_typescript@5.6.3",
-    "npm:svelte@5": "5.55.1",
-    "npm:typescript@~5.6.2": "5.6.3",
-    "npm:vite@^6.0.3": "6.4.1"
+    "npm:@sveltejs/adapter-static@^3.0.10": "3.0.10_@sveltejs+kit@2.55.0__@sveltejs+vite-plugin-svelte@5.1.1___svelte@5.55.1___vite@6.4.1__svelte@5.55.1__typescript@5.6.3__vite@6.4.1_@sveltejs+vite-plugin-svelte@5.1.1__svelte@5.55.1__vite@6.4.1_svelte@5.55.1_typescript@5.6.3_vite@6.4.1",
+    "npm:@sveltejs/kit@^2.55.0": "2.55.0_@sveltejs+vite-plugin-svelte@5.1.1__svelte@5.55.1__vite@6.4.1_svelte@5.55.1_typescript@5.6.3_vite@6.4.1",
+    "npm:@sveltejs/vite-plugin-svelte@^5.1.1": "5.1.1_svelte@5.55.1_vite@6.4.1",
+    "npm:@tauri-apps/api@^2.10.1": "2.10.1",
+    "npm:@tauri-apps/cli@^2.10.1": "2.10.1",
+    "npm:@tauri-apps/plugin-opener@^2.5.3": "2.5.3",
+    "npm:svelte-check@^4.4.6": "4.4.6_svelte@5.55.1_typescript@5.6.3",
+    "npm:svelte@^5.55.1": "5.55.1",
+    "npm:typescript@~5.6.3": "5.6.3",
+    "npm:vite@^6.4.1": "6.4.1"
   },
   "npm": {
     "@esbuild/aix-ppc64@0.25.12": {
@@ -726,16 +726,16 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
-        "npm:@sveltejs/adapter-static@^3.0.6",
-        "npm:@sveltejs/kit@^2.9.0",
-        "npm:@sveltejs/vite-plugin-svelte@5",
-        "npm:@tauri-apps/api@2",
-        "npm:@tauri-apps/cli@2",
-        "npm:@tauri-apps/plugin-opener@2",
-        "npm:svelte-check@4",
-        "npm:svelte@5",
-        "npm:typescript@~5.6.2",
-        "npm:vite@^6.0.3"
+        "npm:@sveltejs/adapter-static@^3.0.10",
+        "npm:@sveltejs/kit@^2.55.0",
+        "npm:@sveltejs/vite-plugin-svelte@^5.1.1",
+        "npm:@tauri-apps/api@^2.10.1",
+        "npm:@tauri-apps/cli@^2.10.1",
+        "npm:@tauri-apps/plugin-opener@^2.5.3",
+        "npm:svelte-check@^4.4.6",
+        "npm:svelte@^5.55.1",
+        "npm:typescript@~5.6.3",
+        "npm:vite@^6.4.1"
       ]
     }
   }

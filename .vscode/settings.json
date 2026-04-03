@@ -1,9 +1,0 @@
-{
-  "svelte.enable-ts-plugin": true,
-  "files.exclude": {
-    ".svelte-kit": true,
-    "node_modules": true,
-    ".vscode": true,
-    "build": true
-  }
-}

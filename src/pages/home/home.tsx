@@ -1,7 +1,15 @@
-import React from "react";
 import { Box, Grid, Paper, Typography } from "@mui/material";
+import { useSession } from "../../contexts/SessionContext";
 
-const Homepage = () => {
+const HomePage = () => {
+  const { session } = useSession();
+
+  if (!session || !session.loggedIn || session.isExpired()) {
+    // navigate to signing page
+    window.location.href = "/signin";
+    return null;
+  }
+
   return (
     <Box
       sx={{
@@ -56,4 +64,4 @@ const Homepage = () => {
   );
 };
 
-export default Homepage;
+export default HomePage;

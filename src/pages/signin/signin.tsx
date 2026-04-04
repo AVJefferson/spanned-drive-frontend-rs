@@ -88,7 +88,7 @@ const SignInPage = () => {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          p: 4,
+          p: { xs: 3, sm: 4, md: 5 },
         }}
       >
         <Box
@@ -100,10 +100,17 @@ const SignInPage = () => {
             gap: 2,
           }}
         >
+          {/* Mobile Branding (only visible on xs) */}
+          <Box sx={{ display: { xs: "flex", sm: "none" }, flexDirection: "column", alignItems: "center", mb: 4 }}>
+            <Typography variant="h4" component="h1" fontWeight="bold" color="primary.main">
+              Spanned Drive
+            </Typography>
+          </Box>
+
           <Box sx={{ mb: 2, textAlign: "center" }}>
             <Typography
               component="h2"
-              variant="h4"
+              variant="h5"
               fontWeight="bold"
               gutterBottom
             >

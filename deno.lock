@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@emotion/cache@^11.14.0": "11.14.0",
     "npm:@emotion/react@^11.14.0": "11.14.0_react@19.2.4",
     "npm:@emotion/styled@^11.14.1": "11.14.1_@emotion+react@11.14.0__react@19.2.4_react@19.2.4",
     "npm:@mui/material@^7.3.9": "7.3.9_@emotion+react@11.14.0__react@19.2.4_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.4__react@19.2.4_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
@@ -1212,6 +1213,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@emotion/cache@^11.14.0",
         "npm:@emotion/react@^11.14.0",
         "npm:@emotion/styled@^11.14.1",
         "npm:@mui/material@^7.3.9",

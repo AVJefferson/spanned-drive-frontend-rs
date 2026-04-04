@@ -1,5 +1,8 @@
 import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 
+// explicity import material UI CSS to avoid triggering CSS import issues in Nginx
+import "@mui/material/styles";
+
 const GoogleIcon = () => (
   <svg
     width="24"

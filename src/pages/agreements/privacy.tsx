@@ -60,7 +60,7 @@ export default function Privacy() {
           >
             1. Information We Collect
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             We may collect personal information that you voluntarily provide to
             us when you express an interest in obtaining information about us or
             our products and Services.
@@ -75,7 +75,7 @@ export default function Privacy() {
           >
             2. How We Use Your Information
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             We use personal information collected via our application for a
             variety of business purposes, primarily to provide, maintain, and
             improve our services to you.
@@ -90,7 +90,7 @@ export default function Privacy() {
           >
             3. Will Your Information Be Shared?
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             We only share information with your consent, to comply with laws, to
             provide you with services, to protect your rights, or to fulfill
             business obligations.
@@ -105,7 +105,7 @@ export default function Privacy() {
           >
             4. Data Retention
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             We will only keep your personal information for as long as it is
             necessary for the purposes set out in this privacy notice, unless a
             longer retention period is required or permitted by law.
@@ -120,7 +120,7 @@ export default function Privacy() {
           >
             5. Contact Us
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             If you have questions or comments about this notice, you may contact
             us using the provided contact information in the application.
           </Typography>

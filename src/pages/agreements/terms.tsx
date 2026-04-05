@@ -60,7 +60,7 @@ export default function Terms() {
           >
             1. Acceptance of Terms
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             By accessing and using this application, you accept and agree to be
             bound by the terms and provision of this agreement.
           </Typography>
@@ -74,7 +74,7 @@ export default function Terms() {
           >
             2. Use License
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             Permission is granted to temporarily use this application for
             personal, non-commercial transitory viewing only.
           </Typography>
@@ -88,7 +88,7 @@ export default function Terms() {
           >
             3. Disclaimer
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             The materials within this application are provided on an 'as is'
             basis. We make no warranties, expressed or implied, and hereby
             disclaim and negate all other warranties including, without
@@ -106,7 +106,7 @@ export default function Terms() {
           >
             4. Limitations
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             In no event shall we or our suppliers be liable for any damages
             (including, without limitation, damages for loss of data or profit,
             or due to business interruption) arising out of the use or inability
@@ -122,7 +122,7 @@ export default function Terms() {
           >
             5. Modifications
           </Typography>
-          <Typography variant="body1" paragraph>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             We may revise these terms of service for its application at any time
             without notice. By using this application you are agreeing to be
             bound by the then current version of these terms of service.

@@ -3,6 +3,7 @@ import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 // explicity import material UI CSS to avoid triggering CSS import issues in Nginx
 import "@mui/material/styles";
 import { Link } from "react-router-dom";
+import bgImage from "../../assets/signin-bg.jpg";
 
 const GoogleIcon = () => (
   <svg
@@ -58,7 +59,27 @@ const SignInPage = () => {
   };
 
   return (
-    <Grid container sx={{ height: "100vh" }}>
+    <Grid 
+      container 
+      sx={{ 
+        height: "100vh",
+        backgroundImage: `url(${bgImage})`,
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        position: "relative",
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)', // Dark overlay for better text visibility
+          zIndex: 0,
+        }
+      }}
+    >
       {/* Left side: Information or Hero Area */}
       <Grid
         size={{ xs: false, sm: 4, md: 7 }}
@@ -67,15 +88,16 @@ const SignInPage = () => {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          bgcolor: "primary.main",
-          color: "primary.contrastText",
+          color: "white",
           p: 4,
+          zIndex: 1,
+          textAlign: "center"
         }}
       >
-        <Typography variant="h2" component="h1" gutterBottom fontWeight="bold">
+        <Typography variant="h2" component="h1" gutterBottom fontWeight="bold" sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
           Spanned Drive
         </Typography>
-        <Typography variant="h6" align="center" sx={{ maxWidth: 600 }}>
+        <Typography variant="h6" align="center" sx={{ maxWidth: 600, textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
           A secure, distributed drive solution bringing all your cloud storage
           together in one place.
         </Typography>
@@ -84,105 +106,117 @@ const SignInPage = () => {
       {/* Right side: Sign-in Area */}
       <Grid
         size={{ xs: 12, sm: 8, md: 5 }}
-        component={Paper}
-        elevation={6}
-        square
         sx={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          p: { xs: 3, sm: 4, md: 5 },
+          p: { xs: 2, sm: 4, md: 5 },
+          zIndex: 1,
         }}
       >
-        <Box
+        <Paper
+          elevation={6}
           sx={{
+            p: { xs: 4, sm: 5 },
             width: "100%",
             maxWidth: 400,
+            borderRadius: 3,
             display: "flex",
             flexDirection: "column",
-            gap: 2,
+            alignItems: "center",
+            bgcolor: 'background.paper',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
           }}
         >
-          {/* Mobile Branding (only visible on xs) */}
           <Box
             sx={{
-              display: { xs: "flex", sm: "none" },
+              width: "100%",
+              display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              mb: 4,
+              gap: 2,
             }}
           >
-            <Typography
-              variant="h4"
-              component="h1"
-              fontWeight="bold"
-              color="primary.main"
+            {/* Mobile Branding (only visible on xs) */}
+            <Box
+              sx={{
+                display: { xs: "flex", sm: "none" },
+                flexDirection: "column",
+                alignItems: "center",
+                mb: 2,
+              }}
             >
-              Spanned Drive
-            </Typography>
-          </Box>
+              <Typography
+                variant="h4"
+                component="h1"
+                fontWeight="bold"
+                color="primary.main"
+              >
+                Spanned Drive
+              </Typography>
+            </Box>
 
-          <Box sx={{ mb: 2, textAlign: "center" }}>
-            <Typography
-              component="h2"
-              variant="h5"
-              fontWeight="bold"
-              gutterBottom
+            <Box sx={{ mb: 2, textAlign: "center" }}>
+              <Typography
+                component="h2"
+                variant="h5"
+                fontWeight="bold"
+                gutterBottom
+              >
+                Welcome back
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Sign in to access your dashboard
+              </Typography>
+            </Box>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<GoogleIcon />}
+              onClick={handleGoogleSignIn}
+              sx={{
+                py: 1.5,
+                borderColor: "grey.300",
+                color: "text.primary",
+                "&:hover": {
+                  borderColor: "grey.400",
+                  bgcolor: "action.hover",
+                },
+              }}
             >
-              Welcome back
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Sign in to access your dashboard
-            </Typography>
+              Continue with Google
+            </Button>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<MicrosoftIcon />}
+              onClick={handleMicrosoftSignIn}
+              sx={{
+                py: 1.5,
+                borderColor: "grey.300",
+                color: "text.primary",
+                "&:hover": {
+                  borderColor: "grey.400",
+                  bgcolor: "action.hover",
+                },
+              }}
+            >
+              Continue with Microsoft
+            </Button>
+
+            <Box sx={{ mt: 3, textAlign: "center" }}>
+              <Typography variant="caption" color="text.secondary">
+                By signing in, you agree to our{" "}
+                <Link to="/terms">Terms of Service</Link> and{" "}
+                <Link to="/privacy">Privacy Policy</Link>.
+              </Typography>
+            </Box>
           </Box>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            size="large"
-            startIcon={<GoogleIcon />}
-            onClick={handleGoogleSignIn}
-            sx={{
-              py: 1.5,
-              borderColor: "grey.300",
-              color: "text.primary",
-              "&:hover": {
-                borderColor: "grey.400",
-                bgcolor: "grey.50",
-              },
-            }}
-          >
-            Continue with Google
-          </Button>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            size="large"
-            startIcon={<MicrosoftIcon />}
-            onClick={handleMicrosoftSignIn}
-            sx={{
-              py: 1.5,
-              borderColor: "grey.300",
-              color: "text.primary",
-              "&:hover": {
-                borderColor: "grey.400",
-                bgcolor: "grey.50",
-              },
-            }}
-          >
-            Continue with Microsoft
-          </Button>
-
-          <Box sx={{ mt: 3, textAlign: "center" }}>
-            <Typography variant="caption" color="text.secondary">
-              By signing in, you agree to our{" "}
-              <Link to="/terms">Terms of Service</Link> and{" "}
-              <Link to="/privacy">Privacy Policy</Link>.
-            </Typography>
-          </Box>
-        </Box>
+        </Paper>
       </Grid>
     </Grid>
   );

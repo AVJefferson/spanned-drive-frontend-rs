@@ -8,7 +8,7 @@ import {
   Button,
   Link,
 } from "@mui/material";
-import { useNavigate, Link as RouterLink } from "react-router-dom";
+import { useNavigate, Link as RouterLink, useParams } from "react-router-dom";
 import bgImage from "../../../assets/signin-bg.jpg";
 
 const privacyNotices: Record<string, any> = import.meta.glob(
@@ -31,9 +31,11 @@ const sortedVersions = [...versions].sort((a, b) => {
   return b.localeCompare(a);
 });
 
-export default function Privacy(props: { date: string }) {
+export default function Privacy() {
   const navigate = useNavigate();
-  const currentVersion = props.date || "current";
+  const { date } = useParams();
+  const currentDateParam = date || "";
+  const currentVersion = date || "current";
   const displayVersion = versions.includes(currentVersion)
     ? currentVersion
     : "current";
@@ -151,8 +153,8 @@ export default function Privacy(props: { date: string }) {
 
       {
         // if privacy not present, show message as a dropdown at the top of the page that vanishes
-        !(`./privacy-${props.date}.tsx` in privacyNotices) &&
-          props.date !== "" && (
+        !(`./privacy-${currentDateParam}.tsx` in privacyNotices) &&
+          currentDateParam !== "" && (
             <Box
               sx={{
                 position: "absolute",
@@ -190,7 +192,7 @@ export default function Privacy(props: { date: string }) {
                 }}
               >
                 <Typography variant="body2" fontWeight="bold">
-                  The requested version ({props.date}) was not found. Displaying
+                  The requested version ({currentDateParam}) was not found. Displaying
                   the current Privacy Policy instead.
                 </Typography>
               </Paper>

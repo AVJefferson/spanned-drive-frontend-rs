@@ -19,22 +19,10 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/error" element={<ErrorPage />} />
         <Route path="/signin" element={<SignInPage />} />
-        <Route path="/terms" element={<TermsPage date="" />} />
-        <Route
-          path="/terms/:date"
-          element={
-            <TermsPage date={window.location.pathname.split("/").pop() || ""} />
-          }
-        />
-        <Route path="/privacy" element={<PrivacyPage date="" />} />
-        <Route
-          path="/privacy/:date"
-          element={
-            <PrivacyPage
-              date={window.location.pathname.split("/").pop() || ""}
-            />
-          }
-        />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/terms/:date" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/privacy/:date" element={<PrivacyPage />} />
         <Route path="*" element={<h1>404 - Not found</h1>} />
       </Routes>
     </main>

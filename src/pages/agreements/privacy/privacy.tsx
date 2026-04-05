@@ -1,4 +1,12 @@
-import { Box, Typography, Paper } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Paper,
+  FormControl,
+  Select,
+  MenuItem,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import bgImage from "../../../assets/signin-bg.jpg";
 
 const privacyNotices: Record<string, any> = import.meta.glob(
@@ -8,21 +16,47 @@ const privacyNotices: Record<string, any> = import.meta.glob(
   },
 );
 
+const versions = Object.keys(privacyNotices)
+  .map((key) => {
+    const match = key.match(/\.\/privacy-(.*)\.tsx/);
+    return match ? match[1] : null;
+  })
+  .filter((v) => v !== null) as string[];
+
+const sortedVersions = [...versions].sort((a, b) => {
+  if (a === "current") return -1;
+  if (b === "current") return 1;
+  return b.localeCompare(a);
+});
+
 export default function Privacy(props: { date: string }) {
+  const navigate = useNavigate();
+  const currentVersion = props.date || "current";
+  const displayVersion = versions.includes(currentVersion)
+    ? currentVersion
+    : "current";
+
+  const handleVersionChange = (event: any) => {
+    const newVersion = event.target.value;
+    if (newVersion === "current") {
+      navigate("/privacy");
+    } else {
+      navigate(`/privacy/${newVersion}`);
+    }
+  };
+
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        height: "100dvh",
+        overflow: "hidden",
         backgroundImage: `url(${bgImage})`,
         backgroundRepeat: "no-repeat",
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundAttachment: "fixed",
         position: "relative",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: { xs: 2, sm: 4, md: 5 },
+        flexDirection: "column",
         "&::before": {
           content: '""',
           position: "absolute",
@@ -35,9 +69,83 @@ export default function Privacy(props: { date: string }) {
         },
       }}
     >
-      {`./privacy-${props.date}.tsx` in privacyNotices
-        ? privacyNotices[`./privacy-${props.date}.tsx`].default()
-        : privacyNotices["./privacy-current.tsx"].default()}
+      <Box
+        sx={{
+          width: "100%",
+          boxSizing: "border-box",
+          p: 2,
+          display: "flex",
+          justifyContent: "flex-end",
+          zIndex: 20,
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            p: 1,
+            px: 2,
+            bgcolor: "rgba(255, 255, 255, 0.9)",
+            borderRadius: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <Typography variant="body2" fontWeight="bold" color="text.secondary">
+            Version:
+          </Typography>
+          <FormControl variant="standard" sx={{ minWidth: 120 }}>
+            <Select
+              value={displayVersion}
+              onChange={handleVersionChange}
+              disableUnderline
+              sx={{ fontWeight: "bold", fontSize: "0.9rem" }}
+            >
+              {sortedVersions.map((version) => (
+                <MenuItem key={version} value={version}>
+                  {version === "current" ? "Current" : version}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Paper>
+      </Box>
+
+      <Box
+        sx={{
+          flexGrow: 1,
+          minHeight: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: { xs: 2, sm: 4, md: 5 },
+          width: "100%",
+          boxSizing: "border-box",
+          overflow: "hidden",
+          zIndex: 1,
+        }}
+      >
+        <Paper
+          elevation={6}
+          sx={{
+            p: { xs: 3, sm: 5 },
+            width: "100%",
+            maxWidth: 1000,
+            borderRadius: 3,
+            bgcolor: "background.paper",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+            zIndex: 1,
+            height: "100%",
+            maxHeight: "100%",
+            overflowY: "auto",
+            boxSizing: "border-box",
+          }}
+        >
+          {`./privacy-${displayVersion}.tsx` in privacyNotices
+            ? privacyNotices[`./privacy-${displayVersion}.tsx`].default()
+            : privacyNotices["./privacy-current.tsx"].default()}
+        </Paper>
+      </Box>
 
       {
         // if privacy not present, show message as a dropdown at the top of the page that vanishes

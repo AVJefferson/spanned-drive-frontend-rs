@@ -1,20 +1,7 @@
 import { Box, Paper, Typography } from "@mui/material";
 export default function Privacy() {
   return (
-    <Paper
-      elevation={6}
-      sx={{
-        p: { xs: 3, sm: 5 },
-        width: "100%",
-        maxWidth: 800,
-        borderRadius: 3,
-        bgcolor: "background.paper",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-        zIndex: 1,
-        maxHeight: "90vh",
-        overflowY: "auto",
-      }}
-    >
+    <>
       <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
         Privacy Policy
       </Typography>
@@ -209,6 +196,6 @@ export default function Privacy() {
           email).
         </Typography>
       </Box>
-    </Paper>
+    </>
   );
 }

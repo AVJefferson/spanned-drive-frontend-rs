@@ -115,10 +115,12 @@ const FileSplitAnimation = () => {
   const rightChunkX = 50 + Math.min(Math.max((progress - 0.3) / 0.4, 0), 1) * 25;
 
   const cloudOpacity = progress < 0.6 ? 0 : Math.min((progress - 0.6) / 0.4, 1);
+  const googleDriveUsage = Math.floor(cloudOpacity * 75);
+  const oneDriveUsage = Math.floor(cloudOpacity * 25);
 
   return (
     <Box ref={domRef} sx={{ position: 'relative', height: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', my: 6, overflow: 'hidden' }}>
-      {/* 20GB File */}
+      {/* Big File */}
       <Box sx={{ 
         position: 'absolute', 
         top: `${fileTop}%`,
@@ -127,7 +129,7 @@ const FileSplitAnimation = () => {
         boxShadow: 3,
         willChange: 'top, opacity'
       }}>
-        <Typography variant="h5" fontWeight="bold">20GB File</Typography>
+        <Typography variant="h5" fontWeight="bold" textAlign="center">Very Big File</Typography>
       </Box>
 
       {/* Split files */}
@@ -141,7 +143,7 @@ const FileSplitAnimation = () => {
         boxShadow: 2,
         willChange: 'left, opacity'
       }}>
-        <Typography variant="body1" fontWeight="bold">10GB Chunk</Typography>
+        <Typography variant="body1" fontWeight="bold" textAlign="center">Smaller Chunks</Typography>
       </Box>
 
       <Box sx={{
@@ -154,22 +156,30 @@ const FileSplitAnimation = () => {
         boxShadow: 2,
         willChange: 'left, opacity'
       }}>
-        <Typography variant="body1" fontWeight="bold">10GB Chunk</Typography>
+        <Typography variant="body1" fontWeight="bold" textAlign="center">Smaller Chunks</Typography>
       </Box>
       
       {/* Cloud Drives Platforms */}
       <Box sx={{ position: 'absolute', bottom: '5%', width: '100%', display: 'flex', justifyContent: 'space-around', opacity: cloudOpacity, willChange: 'opacity' }}>
-         <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+         <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 140 }}>
             <Box sx={{ bgcolor: 'white', p: 1.5, borderRadius: '50%', boxShadow: 1, mb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <GoogleIcon />
             </Box>
             <Typography variant="subtitle1" fontWeight="bold">Google Drive</Typography>
+            <Box sx={{ width: '100%', mt: 1, bgcolor: 'grey.300', borderRadius: 1, height: 8, overflow: 'hidden' }}>
+              <Box sx={{ width: `${googleDriveUsage}%`, height: '100%', bgcolor: '#34A853' }} />
+            </Box>
+            <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontWeight: 'medium' }}>{googleDriveUsage}% Used</Typography>
          </Box>
-         <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+         <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 140 }}>
             <Box sx={{ bgcolor: 'white', p: 1.5, borderRadius: '50%', boxShadow: 1, mb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <MicrosoftIcon />
             </Box>
             <Typography variant="subtitle1" fontWeight="bold">OneDrive</Typography>
+            <Box sx={{ width: '100%', mt: 1, bgcolor: 'grey.300', borderRadius: 1, height: 8, overflow: 'hidden' }}>
+              <Box sx={{ width: `${oneDriveUsage}%`, height: '100%', bgcolor: '#00a4ef' }} />
+            </Box>
+            <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontWeight: 'medium' }}>{oneDriveUsage}% Used</Typography>
          </Box>
       </Box>
 
@@ -386,7 +396,7 @@ const SignInPage = () => {
               <FileSplitAnimation />
               
               <Typography variant="body1" textAlign="center" color="text.secondary" sx={{ maxWidth: 700, mx: "auto", mt: 2, fontSize: '1.1rem' }}>
-                A 20GB file is intelligently divided to fit into the available space across your accounts, maximizing your storage utilization effortlessly.
+                A Big file/Folder is intelligently divided to fit into the available space across your accounts, maximizing your storage utilization effortlessly.
               </Typography>
             </Box>
           </FadeInSection>

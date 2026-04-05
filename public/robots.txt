@@ -3,3 +3,5 @@ Disallow: /
 Allow: /signin$
 Allow: /privacy$
 Allow: /terms$
+
+Sitemap: https://www.sdrive.avje.in/sitemap.xml

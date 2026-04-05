@@ -25,7 +25,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         parsed.isExpired = () => false; // Adjust this logic as needed for your app
         setSessionState(parsed);
       } catch (e) {
-        console.error("Failed to parse session from localStorage", e);
+        // TODO: Handle JSON parsing error if needed
       }
     }
   }, []);

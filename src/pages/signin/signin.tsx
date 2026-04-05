@@ -356,12 +356,10 @@ const FileSplitAnimation = () => {
 const SignInPage = () => {
   const handleGoogleSignIn = () => {
     // TODO: Implement Google OAuth
-    console.log("Sign in with Google");
   };
 
   const handleMicrosoftSignIn = () => {
     // TODO: Implement Microsoft (OneDrive) OAuth
-    console.log("Sign in with Microsoft");
   };
 
   return (

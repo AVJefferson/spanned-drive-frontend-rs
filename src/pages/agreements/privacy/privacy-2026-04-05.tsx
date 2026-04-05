@@ -7,7 +7,7 @@ export default function Privacy() {
         Privacy Policy
       </Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        Last updated: {new Date().toLocaleDateString()}
+        Last updated: 2026-04-05
       </Typography>
 
       <Box sx={{ mt: 4 }}>

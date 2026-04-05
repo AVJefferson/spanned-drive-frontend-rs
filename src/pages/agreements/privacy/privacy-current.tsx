@@ -6,7 +6,7 @@ export default function Privacy() {
         Privacy Policy
       </Typography>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        Last updated: {new Date().toLocaleDateString()}
+        Last updated: 2026-04-06
       </Typography>
 
       <Box sx={{ mt: 4 }}>
@@ -15,7 +15,7 @@ export default function Privacy() {
           use, disclose, and safeguard your information when you use our
           application. This policy is designed to comply with the General Data
           Protection Regulation (GDPR), the Digital Personal Data Protection Act
-          (DPDPA), and the Google API Services User Data Policy.
+          (DPDPA), and the Various API Services User Data Policy.
         </Typography>
 
         <Typography variant="h6" component="h2" gutterBottom fontWeight="bold">
@@ -23,21 +23,26 @@ export default function Privacy() {
         </Typography>
         <Typography variant="body1" component="div" sx={{ mb: 2 }}>
           When you use our application, particularly when authenticating via
-          Google, we may collect the following information:
+          OAuth, we may collect the following information:
           <ul>
             <li>
               <strong>Personal Identification Information:</strong> Name, email
-              address, and profile picture provided by Google OAuth.
+              address, and profile picture provided by OAuth.
             </li>
             <li>
-              <strong>Google Drive Data:</strong> With your explicit consent, we
-              access your Google Drive files and metadata strictly to provide
-              the core functionality of our application (e.g., viewing,
-              managing, and syncing files).
+              <strong>Drive Data:</strong> With your explicit consent (Provided
+              during login), we access your Drive files and metadata strictly to
+              provide the core functionality of our application (e.g., viewing,
+              managing, and syncing files). These files are not stored on our
+              servers and are only accessed temporarily during your session. We
+              do not access or store any of your Drive data beyond what is
+              necessary to provide our services.
             </li>
             <li>
-              <strong>Usage Data:</strong> Information about how you interact
-              with our application to improve user experience.
+              <strong>Usage Data:</strong> Anonymous Information about how you
+              interact with our application to improve user experience. We
+              cannot link this data to you personally and it is used solely for
+              analytics and performance monitoring purposes.
             </li>
           </ul>
         </Typography>
@@ -52,15 +57,35 @@ export default function Privacy() {
           2. How We Use Your Information
         </Typography>
         <Typography variant="body1" component="div" sx={{ mb: 2 }}>
-          We use your personal information and Google Drive data solely for the
+          We use your personal information and Drive data solely for the
           following purposes:
           <ul>
             <li>
               To provide and maintain the core functionalities of Spanned Drive.
             </li>
-            <li>To authenticate your identity using Google OAuth.</li>
+            <li>To authenticate your identity using OAuth.</li>
             <li>To perform file management operations requested by you.</li>
             <li>To improve our application's performance and security.</li>
+          </ul>
+          <ul>
+            <li>
+              We do not use your information for targeted advertising, nor do we
+              sell it to third parties.
+            </li>
+            <li>
+              We do not use your information for any purposes other than those
+              stated above without your explicit consent.
+            </li>
+            <li>
+              We never access your drive data outside of the context of
+              providing our services.
+            </li>
+            <li>
+              In certain cases, we cannot access your drive data due to
+              technical limitations or permissions. In such cases, we can only
+              provide limited functionality, and we will inform you of any such
+              limitations when they arise.
+            </li>
           </ul>
         </Typography>
 
@@ -74,8 +99,8 @@ export default function Privacy() {
           3. Google API Services User Data Policy Compliance
         </Typography>
         <Typography variant="body1" sx={{ mb: 2 }}>
-          Spanned Drive's use and transfer to any other app of information
-          received from Google APIs will adhere to the{" "}
+          Spanned Drive's use of information received from Google APIs will
+          adhere to the{" "}
           <a
             href="https://developers.google.com/terms/api-services-user-data-policy"
             target="_blank"
@@ -123,6 +148,26 @@ export default function Privacy() {
           your Google Account settings. Upon account deletion or revocation of
           access, we will promptly delete your personal data from our active
           databases.
+
+          All user data is stored securely in your own Drives. The only exceptions
+          are-
+          <ul>
+            <li>
+              <strong>Authentication Tokens:</strong> We may temporarily store OAuth tokens
+              to maintain your session, but these are encrypted and deleted upon
+              logout or after a short period of inactivity.
+            </li>
+            <li>
+              <strong>Usage Data:</strong> We may retain anonymized usage data for
+              analytics purposes, but this data cannot be linked back to you
+              personally.
+            </li>
+            <li>
+              <strong>Personal Data:</strong> We do not retain any personal data beyond what is necessary for
+              authentication and service provision. Once you delete your account or revoke access,
+              all personal data is deleted from our systems.
+            </li>
+          </ul>
         </Typography>
 
         <Typography
@@ -173,11 +218,11 @@ export default function Privacy() {
           7. Security of Your Information
         </Typography>
         <Typography variant="body1" sx={{ mb: 2 }}>
-          We use administrative, technical, and physical security measures to
-          help protect your personal information. While we have taken reasonable
-          steps to secure the personal information you provide to us, please be
-          aware that despite our efforts, no security measures are perfect or
-          impenetrable.
+          The servers used to proivide our services are hosted by Oracle Cloud
+          Infrastructure (OCI) and are located in India West (Mumbai) region.
+          While we have taken reasonable steps to secure the personal information
+          you provide to us, please be aware that despite our efforts, no security
+          measures are perfect or impenetrable.
         </Typography>
 
         <Typography
@@ -192,8 +237,7 @@ export default function Privacy() {
         <Typography variant="body1" sx={{ mb: 2 }}>
           If you have questions or comments about this Privacy Policy, your
           rights, or our data practices, please contact us at:
-          privacy@spanneddrive.com (please update with your actual contact
-          email).
+          <a href="mailto:avjeferson@gmail.com">avjeferson@gmail.com</a>.
         </Typography>
       </Box>
     </>

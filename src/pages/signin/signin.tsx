@@ -94,8 +94,8 @@ const FileSplitAnimation = () => {
       if (!domRef.current) return;
       const rect = domRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
-      const start = windowHeight * 0.7;
-      const end = windowHeight * 0.3;
+      const start = windowHeight * 0.3;
+      const end = windowHeight * -0.25;
       
       let p = (start - rect.top) / (start - end);
       p = Math.max(0, Math.min(1, p));

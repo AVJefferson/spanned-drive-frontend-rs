@@ -528,11 +528,17 @@ const SignInPage = () => {
               <Box sx={{ mt: 3, textAlign: "center" }}>
                 <Typography variant="body2" color="text.secondary">
                   By signing in, you agree to our{" "}
-                  <MuiLink component={Link} to="/terms" underline="always">
+                  <MuiLink
+                    href="https://sdrive.avje.in/terms"
+                    underline="always"
+                  >
                     Terms of Service
                   </MuiLink>{" "}
                   and{" "}
-                  <MuiLink component={Link} to="/privacy" underline="always">
+                  <MuiLink
+                    href="https://sdrive.avje.in/privacy"
+                    underline="always"
+                  >
                     Privacy Policy
                   </MuiLink>
                   .

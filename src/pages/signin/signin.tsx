@@ -2,6 +2,7 @@ import { Box, Button, Grid, Paper, Typography } from "@mui/material";
 
 // explicity import material UI CSS to avoid triggering CSS import issues in Nginx
 import "@mui/material/styles";
+import { Link } from "react-router-dom";
 
 const GoogleIcon = () => (
   <svg
@@ -104,8 +105,20 @@ const SignInPage = () => {
           }}
         >
           {/* Mobile Branding (only visible on xs) */}
-          <Box sx={{ display: { xs: "flex", sm: "none" }, flexDirection: "column", alignItems: "center", mb: 4 }}>
-            <Typography variant="h4" component="h1" fontWeight="bold" color="primary.main">
+          <Box
+            sx={{
+              display: { xs: "flex", sm: "none" },
+              flexDirection: "column",
+              alignItems: "center",
+              mb: 4,
+            }}
+          >
+            <Typography
+              variant="h4"
+              component="h1"
+              fontWeight="bold"
+              color="primary.main"
+            >
               Spanned Drive
             </Typography>
           </Box>
@@ -164,8 +177,9 @@ const SignInPage = () => {
 
           <Box sx={{ mt: 3, textAlign: "center" }}>
             <Typography variant="caption" color="text.secondary">
-              By signing in, you agree to our Terms of Service and Privacy
-              Policy.
+              By signing in, you agree to our{" "}
+              <Link to="/terms">Terms of Service</Link> and{" "}
+              <Link to="/privacy">Privacy Policy</Link>.
             </Typography>
           </Box>
         </Box>

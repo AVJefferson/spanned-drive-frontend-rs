@@ -5,8 +5,10 @@ import {
   FormControl,
   Select,
   MenuItem,
+  Button,
+  Link,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import bgImage from "../../../assets/signin-bg.jpg";
 
 const privacyNotices: Record<string, any> = import.meta.glob(
@@ -195,6 +197,41 @@ export default function Privacy(props: { date: string }) {
             </Box>
           )
       }
+
+      <Box
+        sx={{
+          width: "100%",
+          boxSizing: "border-box",
+          p: 2,
+          display: "flex",
+          justifyContent: "center",
+          zIndex: 20,
+        }}
+      >
+        <Paper
+          elevation={0}
+          sx={{
+            p: 1,
+            px: 2,
+            bgcolor: "rgba(255, 255, 255, 0.9)",
+            borderRadius: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
+        >
+          <Button component={RouterLink} to="/" size="small" sx={{ fontWeight: "bold" }}>
+            Back to Home
+          </Button>
+          <Typography variant="body2" color="text.secondary">
+            Also view:{" "}
+            <Link component={RouterLink} to="/terms" sx={{ textDecoration: "none", fontWeight: "bold" }}>
+              Terms of Service
+            </Link>
+          </Typography>
+        </Paper>
+      </Box>
     </Box>
   );
 }

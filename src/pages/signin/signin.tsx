@@ -12,7 +12,7 @@ import {
 // explicity import material UI CSS to avoid triggering CSS import issues in Nginx
 import "@mui/material/styles";
 import { Link } from "react-router-dom";
-import bgImage from "../../assets/signin-bg.jpg";
+import bgImage from "../../assets/signin-bg.avif";
 
 const GoogleIcon = () => (
   <svg
@@ -530,14 +530,14 @@ const SignInPage = () => {
                   <Typography variant="body2" color="text.secondary">
                     By signing in, you agree to our{" "}
                     <MuiLink
-                      href="https://sdrive.avje.in/terms"
+                      href="/terms"
                       underline="always"
                     >
                       Terms of Service
                     </MuiLink>{" "}
                     and{" "}
                     <MuiLink
-                      href="https://sdrive.avje.in/privacy"
+                      href="/privacy"
                       underline="always"
                     >
                       Privacy Policy
@@ -729,7 +729,7 @@ const SignInPage = () => {
             View our:{" "}
             <MuiLink
               component={Link}
-              to="https://sdrive.avje.in/privacy"
+              to="/privacy"
               sx={{
                 textDecoration: "none",
                 fontWeight: "bold",
@@ -741,7 +741,7 @@ const SignInPage = () => {
             and{" "}
             <MuiLink
               component={Link}
-              to="https://sdrive.avje.in/terms"
+              to="/terms"
               sx={{
                 textDecoration: "none",
                 fontWeight: "bold",

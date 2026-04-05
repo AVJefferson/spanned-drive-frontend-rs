@@ -9,7 +9,7 @@ import {
   Link,
 } from "@mui/material";
 import { useNavigate, Link as RouterLink, useParams } from "react-router-dom";
-import bgImage from "../../../assets/signin-bg.jpg";
+import bgImage from "../../../assets/signin-bg.avif";
 
 const termNotices: Record<string, any> = import.meta.glob(
   "./terms-*.tsx",

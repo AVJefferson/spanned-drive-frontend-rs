@@ -202,7 +202,7 @@ export default function Terms(props: { date: string }) {
         sx={{
           width: "100%",
           boxSizing: "border-box",
-          p: 2,
+          p: { xs: 1, sm: 2 },
           display: "flex",
           justifyContent: "center",
           zIndex: 20,
@@ -212,7 +212,7 @@ export default function Terms(props: { date: string }) {
           elevation={0}
           sx={{
             p: 1,
-            px: 2,
+            px: { xs: 1, sm: 2 },
             bgcolor: "rgba(255, 255, 255, 0.9)",
             borderRadius: 2,
             display: "flex",
@@ -221,12 +221,25 @@ export default function Terms(props: { date: string }) {
             width: "100%",
           }}
         >
-          <Button component={RouterLink} to="/" size="small" sx={{ fontWeight: "bold" }}>
+          <Button
+            component={RouterLink}
+            to="/"
+            size="small"
+            sx={{ fontWeight: "bold", fontSize: { xs: "0.7rem", sm: "0.8125rem" }, minWidth: "auto" }}
+          >
             Back to Home
           </Button>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontSize: { xs: "0.7rem", sm: "0.875rem" } }}
+          >
             Also view:{" "}
-            <Link component={RouterLink} to="/privacy" sx={{ textDecoration: "none", fontWeight: "bold" }}>
+            <Link
+              component={RouterLink}
+              to="/privacy"
+              sx={{ textDecoration: "none", fontWeight: "bold", fontSize: { xs: "0.7rem", sm: "0.875rem" } }}
+            >
               Privacy Policy
             </Link>
           </Typography>

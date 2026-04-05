@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Button, Container, Grid, Paper, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Container,
+  Grid,
+  Paper,
+  Typography,
+  Link as MuiLink,
+} from "@mui/material";
 
 // explicity import material UI CSS to avoid triggering CSS import issues in Nginx
 import "@mui/material/styles";
@@ -59,7 +67,7 @@ const FadeInSection = ({ children }: { children: React.ReactNode }) => {
       const windowHeight = window.innerHeight;
       const start = windowHeight;
       const end = windowHeight * 0.75;
-      
+
       let p = (start - rect.top) / (start - end);
       p = Math.max(0, Math.min(1, p));
       setProgress(p);
@@ -76,8 +84,8 @@ const FadeInSection = ({ children }: { children: React.ReactNode }) => {
       style={{
         opacity: progress,
         transform: `translateY(${(1 - progress) * 50}px)`,
-        width: '100%',
-        willChange: 'opacity, transform'
+        width: "100%",
+        willChange: "opacity, transform",
       }}
     >
       {children}
@@ -96,7 +104,7 @@ const FileSplitAnimation = () => {
       const windowHeight = window.innerHeight;
       const start = windowHeight * 0.3;
       const end = windowHeight * -0.25;
-      
+
       let p = (start - rect.top) / (start - end);
       p = Math.max(0, Math.min(1, p));
       setProgress(p);
@@ -112,85 +120,235 @@ const FileSplitAnimation = () => {
 
   const chunkOpacity = progress < 0.3 ? 0 : Math.min((progress - 0.3) / 0.2, 1);
   const leftChunkX = 50 - Math.min(Math.max((progress - 0.3) / 0.4, 0), 1) * 25;
-  const rightChunkX = 50 + Math.min(Math.max((progress - 0.3) / 0.4, 0), 1) * 25;
+  const rightChunkX =
+    50 + Math.min(Math.max((progress - 0.3) / 0.4, 0), 1) * 25;
 
   const cloudOpacity = progress < 0.6 ? 0 : Math.min((progress - 0.6) / 0.4, 1);
   const googleDriveUsage = Math.floor(cloudOpacity * 75);
   const oneDriveUsage = Math.floor(cloudOpacity * 25);
 
   return (
-    <Box ref={domRef} sx={{ position: 'relative', height: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', my: 6, overflow: 'hidden' }}>
+    <Box
+      ref={domRef}
+      sx={{
+        position: "relative",
+        height: 400,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        my: 6,
+        overflow: "hidden",
+      }}
+    >
       {/* Big File */}
-      <Box sx={{ 
-        position: 'absolute', 
-        top: `${fileTop}%`,
-        opacity: fileOpacity,
-        width: { xs: 150, sm: 250 }, height: 120, bgcolor: 'primary.main', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2, zIndex: 2,
-        boxShadow: 3,
-        willChange: 'top, opacity'
-      }}>
-        <Typography variant="h5" fontWeight="bold" textAlign="center">Very Big File</Typography>
+      <Box
+        sx={{
+          position: "absolute",
+          top: `${fileTop}%`,
+          opacity: fileOpacity,
+          width: { xs: 150, sm: 250 },
+          height: 120,
+          bgcolor: "primary.main",
+          color: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 2,
+          zIndex: 2,
+          boxShadow: 3,
+          willChange: "top, opacity",
+        }}
+      >
+        <Typography variant="h5" fontWeight="bold" textAlign="center">
+          Very Big File
+        </Typography>
       </Box>
 
       {/* Split files */}
-      <Box sx={{
-        position: 'absolute',
-        top: '55%',
-        left: `${leftChunkX}%`,
-        transform: 'translate(-50%, -50%)',
-        opacity: chunkOpacity,
-        width: { xs: 100, sm: 160 }, height: 90, bgcolor: '#34A853', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 2, zIndex: 1,
-        boxShadow: 2,
-        willChange: 'left, opacity'
-      }}>
-        <Typography variant="body1" fontWeight="bold" textAlign="center">Smaller Chunks</Typography>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "55%",
+          left: `${leftChunkX}%`,
+          transform: "translate(-50%, -50%)",
+          opacity: chunkOpacity,
+          width: { xs: 100, sm: 160 },
+          height: 90,
+          bgcolor: "#34A853",
+          color: "white",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 2,
+          zIndex: 1,
+          boxShadow: 2,
+          willChange: "left, opacity",
+        }}
+      >
+        <Typography variant="body1" fontWeight="bold" textAlign="center">
+          Smaller Chunks
+        </Typography>
       </Box>
 
-      <Box sx={{
-        position: 'absolute',
-        top: '55%',
-        left: `${rightChunkX}%`,
-        transform: 'translate(-50%, -50%)',
-        opacity: chunkOpacity,
-        width: { xs: 100, sm: 160 }, height: 90, bgcolor: '#00a4ef', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 2, zIndex: 1,
-        boxShadow: 2,
-        willChange: 'left, opacity'
-      }}>
-        <Typography variant="body1" fontWeight="bold" textAlign="center">Smaller Chunks</Typography>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "55%",
+          left: `${rightChunkX}%`,
+          transform: "translate(-50%, -50%)",
+          opacity: chunkOpacity,
+          width: { xs: 100, sm: 160 },
+          height: 90,
+          bgcolor: "#00a4ef",
+          color: "white",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 2,
+          zIndex: 1,
+          boxShadow: 2,
+          willChange: "left, opacity",
+        }}
+      >
+        <Typography variant="body1" fontWeight="bold" textAlign="center">
+          Smaller Chunks
+        </Typography>
       </Box>
-      
+
       {/* Cloud Drives Platforms */}
-      <Box sx={{ position: 'absolute', bottom: '5%', width: '100%', display: 'flex', justifyContent: 'space-around', opacity: cloudOpacity, willChange: 'opacity' }}>
-         <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 140 }}>
-            <Box sx={{ bgcolor: 'white', p: 1.5, borderRadius: '50%', boxShadow: 1, mb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <GoogleIcon />
-            </Box>
-            <Typography variant="subtitle1" fontWeight="bold">Google Drive</Typography>
-            <Box sx={{ width: '100%', mt: 1, bgcolor: 'grey.300', borderRadius: 1, height: 8, overflow: 'hidden' }}>
-              <Box sx={{ width: `${googleDriveUsage}%`, height: '100%', bgcolor: '#34A853' }} />
-            </Box>
-            <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontWeight: 'medium' }}>{googleDriveUsage}% Used</Typography>
-         </Box>
-         <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 140 }}>
-            <Box sx={{ bgcolor: 'white', p: 1.5, borderRadius: '50%', boxShadow: 1, mb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <MicrosoftIcon />
-            </Box>
-            <Typography variant="subtitle1" fontWeight="bold">OneDrive</Typography>
-            <Box sx={{ width: '100%', mt: 1, bgcolor: 'grey.300', borderRadius: 1, height: 8, overflow: 'hidden' }}>
-              <Box sx={{ width: `${oneDriveUsage}%`, height: '100%', bgcolor: '#00a4ef' }} />
-            </Box>
-            <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontWeight: 'medium' }}>{oneDriveUsage}% Used</Typography>
-         </Box>
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: "5%",
+          width: "100%",
+          display: "flex",
+          justifyContent: "space-around",
+          opacity: cloudOpacity,
+          willChange: "opacity",
+        }}
+      >
+        <Box
+          sx={{
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            width: 140,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: "white",
+              p: 1.5,
+              borderRadius: "50%",
+              boxShadow: 1,
+              mb: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <GoogleIcon />
+          </Box>
+          <Typography variant="subtitle1" fontWeight="bold">
+            Google Drive
+          </Typography>
+          <Box
+            sx={{
+              width: "100%",
+              mt: 1,
+              bgcolor: "grey.300",
+              borderRadius: 1,
+              height: 8,
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              sx={{
+                width: `${googleDriveUsage}%`,
+                height: "100%",
+                bgcolor: "#34A853",
+              }}
+            />
+          </Box>
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, color: "text.secondary", fontWeight: "medium" }}
+          >
+            {googleDriveUsage}% Used
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            width: 140,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: "white",
+              p: 1.5,
+              borderRadius: "50%",
+              boxShadow: 1,
+              mb: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <MicrosoftIcon />
+          </Box>
+          <Typography variant="subtitle1" fontWeight="bold">
+            OneDrive
+          </Typography>
+          <Box
+            sx={{
+              width: "100%",
+              mt: 1,
+              bgcolor: "grey.300",
+              borderRadius: 1,
+              height: 8,
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              sx={{
+                width: `${oneDriveUsage}%`,
+                height: "100%",
+                bgcolor: "#00a4ef",
+              }}
+            />
+          </Box>
+          <Typography
+            variant="caption"
+            sx={{ mt: 0.5, color: "text.secondary", fontWeight: "medium" }}
+          >
+            {oneDriveUsage}% Used
+          </Typography>
+        </Box>
       </Box>
 
       {/* Connection Lines */}
-      <Box sx={{ 
-          position: 'absolute', 
-          top: '30%', left: '50%', transform: 'translateX(-50%)', 
-          width: 2, height: '25%', bgcolor: 'text.disabled', 
-          opacity: cloudOpacity, zIndex: 0,
-          willChange: 'opacity'
-      }} />
+      <Box
+        sx={{
+          position: "absolute",
+          top: "30%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 2,
+          height: "25%",
+          bgcolor: "text.disabled",
+          opacity: cloudOpacity,
+          zIndex: 0,
+          willChange: "opacity",
+        }}
+      />
     </Box>
   );
 };
@@ -208,25 +366,25 @@ const SignInPage = () => {
 
   return (
     <Box sx={{ width: "100%", overflowX: "hidden" }}>
-      <Grid 
-        container 
-        sx={{ 
+      <Grid
+        container
+        sx={{
           minHeight: "100vh",
           backgroundImage: `url(${bgImage})`,
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
           backgroundPosition: "center",
           position: "relative",
-          '&::before': {
+          "&::before": {
             content: '""',
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)', // Dark overlay for better text visibility
+            backgroundColor: "rgba(0, 0, 0, 0.6)", // Dark overlay for better text visibility
             zIndex: 0,
-          }
+          },
         }}
       >
         {/* Left side: Information or Hero Area */}
@@ -240,13 +398,23 @@ const SignInPage = () => {
             color: "white",
             p: 4,
             zIndex: 1,
-            textAlign: "center"
+            textAlign: "center",
           }}
         >
-          <Typography variant="h2" component="h1" gutterBottom fontWeight="bold" sx={{ textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+          <Typography
+            variant="h2"
+            component="h1"
+            gutterBottom
+            fontWeight="bold"
+            sx={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}
+          >
             Spanned Drive
           </Typography>
-          <Typography variant="h6" align="center" sx={{ maxWidth: 600, textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>
+          <Typography
+            variant="h6"
+            align="center"
+            sx={{ maxWidth: 600, textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
+          >
             A secure, distributed drive solution bringing all your cloud storage
             together in one place.
           </Typography>
@@ -274,8 +442,8 @@ const SignInPage = () => {
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              bgcolor: 'background.paper',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+              bgcolor: "background.paper",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
             }}
           >
             <Box
@@ -358,86 +526,151 @@ const SignInPage = () => {
               </Button>
 
               <Box sx={{ mt: 3, textAlign: "center" }}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="body2" color="text.secondary">
                   By signing in, you agree to our{" "}
-                  <Link to="/terms">Terms of Service</Link> and{" "}
-                  <Link to="/privacy">Privacy Policy</Link>.
+                  <MuiLink component={Link} to="/terms" underline="always">
+                    Terms of Service
+                  </MuiLink>{" "}
+                  and{" "}
+                  <MuiLink component={Link} to="/privacy" underline="always">
+                    Privacy Policy
+                  </MuiLink>
+                  .
                 </Typography>
               </Box>
             </Box>
           </Paper>
         </Grid>
       </Grid>
-      
+
       {/* Scrollable Information Section */}
-      <Box sx={{ bgcolor: "background.default", color: "text.primary", py: 10 }}>
+      <Box
+        sx={{ bgcolor: "background.default", color: "text.primary", py: 10 }}
+      >
         <Container maxWidth="lg">
-          
           <FadeInSection>
             <Box sx={{ textAlign: "center", mb: 12 }}>
-              <Typography variant="h3" component="h2" fontWeight="bold" gutterBottom>
+              <Typography
+                variant="h3"
+                component="h2"
+                fontWeight="bold"
+                gutterBottom
+              >
                 What is Spanned Drive?
               </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 800, mx: "auto", lineHeight: 1.6 }}>
-                Spanned Drive is an innovative cloud aggregation platform that combines all your fragmented storage accounts—like Google Drive and OneDrive—into a single, unified logical drive. Stop worrying about which account has free space; let us handle the distribution.
+              <Typography
+                variant="h6"
+                color="text.secondary"
+                sx={{ maxWidth: 800, mx: "auto", lineHeight: 1.6 }}
+              >
+                Spanned Drive is an innovative cloud aggregation platform that
+                combines all your fragmented storage accounts—like Google Drive
+                and OneDrive—into a single, unified logical drive. Stop worrying
+                about which account has free space; let us handle the
+                distribution.
               </Typography>
             </Box>
           </FadeInSection>
 
           <FadeInSection>
             <Box sx={{ mb: 12 }}>
-              <Typography variant="h4" component="h3" fontWeight="bold" textAlign="center" gutterBottom>
+              <Typography
+                variant="h4"
+                component="h3"
+                fontWeight="bold"
+                textAlign="center"
+                gutterBottom
+              >
                 Seamless File Splitting
               </Typography>
-              <Typography variant="body1" textAlign="center" color="text.secondary" sx={{ maxWidth: 700, mx: "auto", mb: 4, fontSize: '1.1rem' }}>
-                When you upload a large file, Spanned Drive seamlessly splits it into smaller chunks and distributes them across your connected drives behind the scenes.
+              <Typography
+                variant="body1"
+                textAlign="center"
+                color="text.secondary"
+                sx={{ maxWidth: 700, mx: "auto", mb: 4, fontSize: "1.1rem" }}
+              >
+                When you upload a large file, Spanned Drive seamlessly splits it
+                into smaller chunks and distributes them across your connected
+                drives behind the scenes.
               </Typography>
-              
+
               <FileSplitAnimation />
-              
-              <Typography variant="body1" textAlign="center" color="text.secondary" sx={{ maxWidth: 700, mx: "auto", mt: 2, fontSize: '1.1rem' }}>
-                A Big file/Folder is intelligently divided to fit into the available space across your accounts, maximizing your storage utilization effortlessly.
+
+              <Typography
+                variant="body1"
+                textAlign="center"
+                color="text.secondary"
+                sx={{ maxWidth: 700, mx: "auto", mt: 2, fontSize: "1.1rem" }}
+              >
+                A Big File or Folder is intelligently divided to fit into the
+                available space across your accounts, maximizing your storage
+                utilization effortlessly.
               </Typography>
             </Box>
           </FadeInSection>
 
           <FadeInSection>
-            <Paper elevation={0} sx={{ p: { xs: 4, md: 6 }, borderRadius: 4, bgcolor: "grey.50", border: '1px solid', borderColor: 'grey.200' }}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 4, md: 6 },
+                borderRadius: 4,
+                bgcolor: "grey.50",
+                border: "1px solid",
+                borderColor: "grey.200",
+              }}
+            >
               <Grid container spacing={6} alignItems="center">
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="h4" component="h3" fontWeight="bold" gutterBottom>
+                  <Typography
+                    variant="h4"
+                    component="h3"
+                    fontWeight="bold"
+                    gutterBottom
+                  >
                     Transparent & Secure
                   </Typography>
-                  <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem' }}>
-                    We request access to your cloud drives for one reason only: <strong>to manage your files on your behalf</strong>. 
+                  <Typography
+                    variant="body1"
+                    paragraph
+                    sx={{ fontSize: "1.1rem" }}
+                  >
+                    We request access to your cloud drives for one reason only:{" "}
+                    <strong>to manage your files on your behalf</strong>.
                   </Typography>
-                  <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem' }}>
-                    Spanned Drive uses your authentication tokens strictly to list, read, write, and delete files so we can present them as a unified filesystem. 
+                  <Typography
+                    variant="body1"
+                    paragraph
+                    sx={{ fontSize: "1.1rem" }}
+                  >
+                    Spanned Drive uses your authentication tokens strictly to
+                    list, read, write, and delete files so we can present them
+                    as a unified filesystem.
                   </Typography>
-                  <Typography variant="body1" paragraph sx={{ fontSize: '1.1rem' }}>
-                    <strong>We do not analyze, sell, or share your data with third parties.</strong> Your privacy and security are our top priorities. All operations are performed transparently.
+                  <Typography
+                    variant="body1"
+                    paragraph
+                    sx={{ fontSize: "1.1rem" }}
+                  >
+                    <strong>
+                      We do not analyze, sell, or share your data with third
+                      parties.
+                    </strong>{" "}
+                    Your privacy and security are our top priorities. All
+                    operations are performed transparently.
                   </Typography>
-                  <Button variant="contained" component={Link} to="/privacy" sx={{ mt: 2, px: 4, py: 1.5, borderRadius: 2 }}>
+                  <Button
+                    variant="contained"
+                    component={Link}
+                    to="/privacy"
+                    sx={{ mt: 2, px: 4, py: 1.5, borderRadius: 2 }}
+                  >
                     Read our Privacy Policy
                   </Button>
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Box sx={{ p: 4, bgcolor: "white", borderRadius: 3, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
-                    <Typography variant="h6" fontWeight="bold" gutterBottom color="primary">
-                      Our Promise
-                    </Typography>
-                    <ul style={{ margin: 0, paddingLeft: 24, color: "var(--mui-palette-text-secondary)", fontSize: '1.05rem', lineHeight: 1.8 }}>
-                      <li style={{ marginBottom: 12 }}>Accurately represent and identify our brand and functionality</li>
-                      <li style={{ marginBottom: 12 }}>Clear and transparent purpose for requesting user data</li>
-                      <li style={{ marginBottom: 12 }}>Hosted securely on a verified domain we own</li>
-                      <li style={{ marginBottom: 12 }}>Visible to users without requiring them to log-in</li>
-                    </ul>
-                  </Box>
                 </Grid>
               </Grid>
             </Paper>
           </FadeInSection>
-          
         </Container>
       </Box>
     </Box>

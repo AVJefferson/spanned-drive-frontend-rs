@@ -11,7 +11,7 @@ import {
 
 // explicity import material UI CSS to avoid triggering CSS import issues in Nginx
 import "@mui/material/styles";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import bgImage from "../../assets/signin-bg.avif";
 
 const GoogleIcon = () => (
@@ -355,7 +355,24 @@ const FileSplitAnimation = () => {
 
 const SignInPage = () => {
   const handleGoogleSignIn = () => {
-    // TODO: Implement Google OAuth
+    let url = "https://accounts.google.com/o/oauth2/v2/auth";
+    url +=
+      "?scope=" +
+      encodeURIComponent(
+        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+      );
+    url += "&include_granted_scopes=true";
+    url += "&response_type=token";
+    url += "&state=state_parameter_passthrough_value";
+    url +=
+      "&redirect_uri=" +
+      encodeURIComponent("https://sdriveapi.avje.in:443/redirect/google-web");
+    url +=
+      "&client_id=" +
+      encodeURIComponent(
+        "127808965448-dg7bm5ncqh3451gfp008rulid7ss2eiv.apps.googleusercontent.com",
+      );
+    window.location.href = url;
   };
 
   const handleMicrosoftSignIn = () => {

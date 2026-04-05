@@ -141,7 +141,7 @@ export default function Privacy() {
         >
           5. Data Retention and Deletion
         </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
+        <Typography variant="body1" component="div" sx={{ mb: 2 }}>
           We retain your personal data only for as long as necessary to provide
           you with our services and fulfill the purposes described in this
           policy. You can revoke access to your Google account at any time via

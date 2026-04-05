@@ -527,17 +527,11 @@ const SignInPage = () => {
                 <Box sx={{ mt: 3, textAlign: "center" }}>
                   <Typography variant="body2" color="text.secondary">
                     By signing in, you agree to our{" "}
-                    <MuiLink
-                      href="/terms"
-                      underline="always"
-                    >
+                    <MuiLink href="/terms" underline="always">
                       Terms of Service
                     </MuiLink>{" "}
                     and{" "}
-                    <MuiLink
-                      href="/privacy"
-                      underline="always"
-                    >
+                    <MuiLink href="/privacy" underline="always">
                       Privacy Policy
                     </MuiLink>
                     .
@@ -665,14 +659,6 @@ const SignInPage = () => {
                       Your privacy and security are our top priorities. All
                       operations are performed transparently.
                     </Typography>
-                    <Button
-                      variant="contained"
-                      component={Link}
-                      to="/privacy"
-                      sx={{ mt: 2, px: 4, py: 1.5, borderRadius: 2 }}
-                    >
-                      Privacy Policy
-                    </Button>
                   </Grid>
                 </Grid>
               </Paper>

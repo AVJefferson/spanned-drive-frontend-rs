@@ -12,3 +12,6 @@ export { default as TermsPage } from "./pages/agreements/terms/terms.tsx";
 
 import "./pages/agreements/privacy/privacy.tsx";
 export { default as PrivacyPage } from "./pages/agreements/privacy/privacy.tsx";
+
+import "./pages/oauth/redirect.tsx";
+export { default as OauthRedirectPages } from "./pages/oauth/redirect.tsx";

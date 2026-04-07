@@ -357,22 +357,73 @@ const SignInPage = () => {
   const handleGoogleSignIn = () => {
     let url = "https://accounts.google.com/o/oauth2/v2/auth";
     url +=
-      "?scope=" +
+      "?client_id=" + encodeURIComponent(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+    url +=
+      "&redirect_uri=" +
+      encodeURIComponent("https://sdrive.avje.in:443/redirect/google-web");
+    // encodeURIComponent("http://127.0.0.1:1420/oauth/redirect/google-web");
+
+    url += "&response_type=code";
+    url +=
+      "&scope=" +
       encodeURIComponent(
         "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
       );
-    url += "&include_granted_scopes=true";
-    url += "&response_type=token";
-    url += "&state=state_parameter_passthrough_value";
-    url +=
-      "&redirect_uri=" +
-      encodeURIComponent("https://sdriveapi.avje.in:443/redirect/google-web");
-    url +=
-      "&client_id=" +
-      encodeURIComponent(
-        "127808965448-dg7bm5ncqh3451gfp008rulid7ss2eiv.apps.googleusercontent.com",
+
+    // Use state to pass a random Nonce for CSRF protection and to maintain any necessary state between the request and callback.
+    let secureRandom = crypto
+      .getRandomValues(new Uint32Array(1))[0]
+      .toString(36);
+    url += `&state=${secureRandom}`;
+
+    url += "&prompt=consent";
+    if (
+      localStorage.getItem("primary_account_provider") === "google" &&
+      localStorage.getItem("primary_account_email")
+    ) {
+      url +=
+        "&login_hint=" +
+        encodeURIComponent(localStorage.getItem("primary_account_email")!);
+    }
+
+    url += "&code_challenge_method=S256";
+    // 1. Generate Verifier (Using a more URL-safe approach to avoid encoding issues)
+    const charset =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const verifierArray = crypto.getRandomValues(new Uint8Array(64));
+    const codeVerifier = Array.from(verifierArray)
+      .map((x) => charset[x % charset.length])
+      .join("");
+
+    // 2. SHA-256 Hashing (Required for S256 method)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(codeVerifier);
+
+    crypto.subtle.digest("SHA-256", data).then((hashBuffer) => {
+      // 3. Base64URL Encode the HASH
+      const codeChallenge = btoa(
+        String.fromCharCode(...new Uint8Array(hashBuffer)),
+      )
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      url += `&code_challenge=${codeChallenge}`;
+
+      sessionStorage.setItem(
+        "oauth_params",
+        JSON.stringify({
+          provider: "google-web",
+          timestamp: Date.now(),
+          nonce: secureRandom,
+          verifier: codeVerifier,
+          challenge: codeChallenge,
+        }),
       );
-    window.location.href = url;
+
+      localStorage.setItem("oauth_url", url);
+
+      window.location.href = url;
+    });
   };
 
   const handleMicrosoftSignIn = () => {

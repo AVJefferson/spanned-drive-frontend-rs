@@ -10,6 +10,7 @@ import {
   SignInPage,
   TermsPage,
   PrivacyPage,
+  OauthRedirectPages,
 } from "./pages";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
         <Route path="/terms/:date" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/privacy/:date" element={<PrivacyPage />} />
+        <Route path="/oauth/redirect/:provider" element={<OauthRedirectPages />} />
         <Route path="*" element={<h1>404 - Not found</h1>} />
       </Routes>
     </main>

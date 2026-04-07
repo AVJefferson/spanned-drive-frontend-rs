@@ -29,8 +29,7 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
       code_verifier: codeVerifier,
 
       grant_type: "authorization_code",
-      redirect_uri: "https://sdrive.avje.in:443/oauth/redirect/google-web",
-      //   redirect_uri: "http://127.0.0.1:1420/oauth/redirect/google-web",
+      redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
     }),
   })
     .then((response) => response.json())

@@ -360,8 +360,7 @@ const SignInPage = () => {
       "?client_id=" + encodeURIComponent(import.meta.env.VITE_GOOGLE_CLIENT_ID);
     url +=
       "&redirect_uri=" +
-      encodeURIComponent("https://sdrive.avje.in:443/oauth/redirect/google-web");
-    // encodeURIComponent("http://127.0.0.1:1420/oauth/redirect/google-web");
+      encodeURIComponent(import.meta.env.VITE_GOOGLE_REDIRECT_URI);
 
     url += "&response_type=code";
     url +=

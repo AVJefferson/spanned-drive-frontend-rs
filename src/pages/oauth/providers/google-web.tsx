@@ -197,6 +197,9 @@ export default function GoogleWebRedirect(params: any) {
           addSecondaryDrive(drive);
         }
 
+        // Remove the nonce used for oauth
+        localStorage.removeItem("oauth_params");
+
         navigate("/");
       } else {
         navigate("/signin?error=oauth_failed");

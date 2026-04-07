@@ -17,8 +17,8 @@ const OauthRedirectPages = () => {
     provider,
     queryParams: Object.fromEntries(queryParams.entries()),
     hashParams: Object.fromEntries(hashParams.entries()),
-    oauthParams: sessionStorage.getItem("oauth_params")
-      ? JSON.parse(sessionStorage.getItem("oauth_params")!)
+    oauthParams: localStorage.getItem("oauth_params")
+      ? JSON.parse(localStorage.getItem("oauth_params")!)
       : {},
   };
 

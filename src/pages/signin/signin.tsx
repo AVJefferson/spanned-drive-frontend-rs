@@ -410,7 +410,7 @@ const SignInPage = () => {
         .replace(/=+$/, "");
       url += `&code_challenge=${codeChallenge}`;
 
-      sessionStorage.setItem(
+      localStorage.setItem(
         "oauth_params",
         JSON.stringify({
           provider: "google-web",

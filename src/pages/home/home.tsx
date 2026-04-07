@@ -7,7 +7,7 @@ const HomePage = () => {
 
   if (!session || !session.primaryDrive || isExpired(session.primaryDrive)) {
     // // navigate to signing page
-    // window.location.href = "/signin";
+    window.location.href = "/signin";
     return null;
   }
 

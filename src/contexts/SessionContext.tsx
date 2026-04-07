@@ -172,13 +172,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     session.primaryDrive?.fetch_access_token?.().then((data: any) => {
       if (data && data.access_token && data.expires_in) {
         setSessionState((prev: Session) => {
+          if (!prev.primaryDrive) return prev;
+          
           let newSession: Session = {
             ...prev,
-            primaryDrive: {
+            primaryDrive: new Drives[prev.primaryDrive.provider]({
               ...prev.primaryDrive,
               access_token: data.access_token,
               expires_in: data.expires_in,
-            },
+            }),
           };
           persistSession(newSession);
           return newSession;
@@ -300,7 +302,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
       if (driveToUpdate.provider === "google-drive") {
         try {
-          const data = await targetDrive?.fetch_access_token?.();
+          const data = await driveToUpdate.fetch_access_token?.();
 
           if (data && data.access_token) {
             newAccessToken = data.access_token;
@@ -327,12 +329,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             updatedPrimary.email === driveToUpdate.email &&
             updatedPrimary.provider === driveToUpdate.provider
           ) {
-            updatedPrimary = {
+            updatedPrimary = new Drives[updatedPrimary.provider]({
               ...updatedPrimary,
               access_token: newAccessToken,
               expires_in: newExpiresIn as number,
               acquired_at: newAcquiredAt as number,
-            };
+            });
             didUpdate = true;
           }
 
@@ -342,12 +344,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
               d.provider === driveToUpdate.provider,
           );
           if (secondaryIndex >= 0) {
-            updatedSecondary[secondaryIndex] = {
+            updatedSecondary[secondaryIndex] = new Drives[updatedSecondary[secondaryIndex].provider]({
               ...updatedSecondary[secondaryIndex],
               access_token: newAccessToken,
               expires_in: newExpiresIn as number,
               acquired_at: newAcquiredAt as number,
-            };
+            });
             didUpdate = true;
           }
 

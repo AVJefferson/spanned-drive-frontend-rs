@@ -2,9 +2,9 @@ import { Box, Grid, Paper, Typography } from "@mui/material";
 import { useSession } from "../../contexts/SessionContext";
 
 const HomePage = () => {
-  const { session } = useSession();
+  const { session, isExpired } = useSession();
 
-  if (!session || !session.loggedIn || session.isExpired()) {
+  if (!session || !session.loggedIn || isExpired(session.primaryAccount)) {
     // navigate to signing page
     window.location.href = "/signin";
     return null;

@@ -1,3 +1,7 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSession } from "../../../contexts/SessionContext";
+
 const decodeJWT = (token: string) => {
   try {
     // Get the middle part (payload)
@@ -33,7 +37,6 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
     }),
   })
     .then((response) => response.json())
-
     .catch((error) => {
       console.error("Error fetching access token:", error);
       return {};
@@ -41,146 +44,153 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
 }
 
 export default function GoogleWebRedirect(params: any) {
-  // Validate the query parameters and handle the OAuth redirect logic here.
-  if (
-    !params?.oauthParams?.timestamp ||
-    !params?.oauthParams?.nonce ||
-    !params?.oauthParams?.provider ||
-    !params?.oauthParams?.verifier
-  ) {
-    return (
-      <div>
-        <h1>Error: Oauth dosent seem to be valid</h1>
-        <p>Please try signing in again.</p>
-      </div>
-    );
-  }
+  const { setPrimaryAccount, addSecondaryAccount } = useSession();
+  const navigate = useNavigate();
+  const [errorNode, setErrorNode] = useState<React.ReactNode | null>(null);
+  const fetchedRef = useRef(false);
 
-  if (
-    !params?.queryParams?.state ||
-    !params?.queryParams?.iss ||
-    !params?.queryParams?.code ||
-    !params?.queryParams?.scope ||
-    !params?.queryParams?.authuser ||
-    !params?.queryParams?.prompt
-  )
-    return (
-      <div>
-        <h1>Error: Missing required parameters</h1>
-        <p>
-          Missing one or more required parameters for Google OAuth redirect.
-        </p>
-      </div>
-    );
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
 
-  if (
-    params?.provider !== "google-web" &&
-    params.oauthParams.provider !== "google-web"
-  ) {
-    return <h1>Provider Mismatch. Something has gone wrong!!!</h1>;
-  }
-
-  //   if (
-  //     params.oauthParams.timestamp &&
-  //     Date.now() - params.oauthParams.timestamp > 5 * 60 * 1000 // 5 minutes
-  //   ) {
-  //     return (
-  //       <div>
-  //         <h1>Error: OAuth session expired</h1>
-  //         <p>Your OAuth session has expired. Please try signing in again.</p>
-  //       </div>
-  //     );
-  //   }
-
-  if (params.queryParams.iss !== "https://accounts.google.com")
-    return (
-      <div>
-        <h1>Error: Invalid issuer</h1>
-        <p>Expected issuer: https://accounts.google.com</p>
-        <p>Received issuer: {params.queryParams.iss}</p>
-        <p>
-          Your account might be at risk. Please check your account activity.
-        </p>
-        <p>If you feel this is a mistake, please contact us.</p>
-      </div>
-    );
-
-  const isPrimaryAccount = params.queryParams.state.split("~")[0] === "primary";
-  const nonceFromState = params.queryParams.state.split("~")[1];
-  if (nonceFromState !== params.oauthParams.nonce) {
-    return (
-      <div>
-        <h1>Error: Invalid state parameter</h1>
-        <p>Expected state: {params.oauthParams.nonce}</p>
-        <p>Received state: {nonceFromState}</p>
-        <p>
-          This could be a CSRF attack. Please do not proceed and contact support
-          immediately.
-        </p>
-      </div>
-    );
-  }
-
-  // Required scopes for the application
-  const requiredScopes = [
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive.appdata",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
-  ];
-  const providedScopes = params.queryParams.scope.split(" ");
-  const missingScopes = requiredScopes.filter(
-    (scope) => !providedScopes.includes(scope),
-  );
-  if (missingScopes.length > 0) {
-    return (
-      <div>
-        <h1>Error: Missing required scopes</h1>
-        <p>
-          The following required scopes are missing from the OAuth response:
-        </p>
-        <ul>
-          {missingScopes.map((scope) => (
-            <li key={scope}>
-              {scope.split("https://www.googleapis.com/auth/")[1] || scope}
-            </li>
-          ))}
-        </ul>
-        <p>
-          Please ensure you grant all required permissions and try signing in
-          again.
-        </p>
-      </div>
-    );
-  }
-
-  FetchGoogleWebAccessTokenAndRefreshToken(
-    params.queryParams.code,
-    params.oauthParams.verifier,
-  ).then((data) => {
-    if (data) {
-      data.user = decodeJWT(data.id_token);
-
-      if (isPrimaryAccount) {
-        localStorage.setItem("primary_account_provider", "google");
-        localStorage.setItem("primary_account_email", data.user.email);
-        localStorage.setItem("primary_account", JSON.stringify(data));
-      } else {
-        localStorage.setItem(
-          `secondary_account_google_${data.user.email}`,
-          JSON.stringify(data),
-        );
-      }
-
-      window.location.href = "/";
-    } else {
-      window.location.href = "/signin?error=oauth_failed";
+    if (
+      !params?.oauthParams?.timestamp ||
+      !params?.oauthParams?.nonce ||
+      !params?.oauthParams?.provider ||
+      !params?.oauthParams?.verifier
+    ) {
+      setErrorNode(
+        <div>
+          <h1>Error: Oauth dosent seem to be valid</h1>
+          <p>Please try signing in again.</p>
+        </div>,
+      );
+      return;
     }
-  });
+
+    if (
+      !params?.queryParams?.state ||
+      !params?.queryParams?.iss ||
+      !params?.queryParams?.code ||
+      !params?.queryParams?.scope ||
+      !params?.queryParams?.authuser ||
+      !params?.queryParams?.prompt
+    ) {
+      setErrorNode(
+        <div>
+          <h1>Error: Missing required parameters</h1>
+          <p>
+            Missing one or more required parameters for Google OAuth redirect.
+          </p>
+        </div>,
+      );
+      return;
+    }
+
+    if (
+      params?.provider !== "google-web" &&
+      params.oauthParams.provider !== "google-web"
+    ) {
+      setErrorNode(<h1>Provider Mismatch. Something has gone wrong!!!</h1>);
+      return;
+    }
+
+    if (params.queryParams.iss !== "https://accounts.google.com") {
+      setErrorNode(
+        <div>
+          <h1>Error: Invalid issuer</h1>
+          <p>Expected issuer: https://accounts.google.com</p>
+          <p>Received issuer: {params.queryParams.iss}</p>
+          <p>
+            Your account might be at risk. Please check your account activity.
+          </p>
+          <p>If you feel this is a mistake, please contact us.</p>
+        </div>,
+      );
+      return;
+    }
+
+    const isPrimaryAccount =
+      params.queryParams.state.split("~")[0] === "primary";
+    const nonceFromState = params.queryParams.state.split("~")[1];
+
+    if (nonceFromState !== params.oauthParams.nonce) {
+      setErrorNode(
+        <div>
+          <h1>Error: Invalid state parameter</h1>
+          <p>Expected state: {params.oauthParams.nonce}</p>
+          <p>Received state: {nonceFromState}</p>
+          <p>
+            This could be a CSRF attack. Please do not proceed and contact
+            support immediately.
+          </p>
+        </div>,
+      );
+      return;
+    }
+
+    // Required scopes for the application
+    const requiredScopes = [
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/drive.appdata",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+    ];
+    const providedScopes = params.queryParams.scope.split(" ");
+    const missingScopes = requiredScopes.filter(
+      (scope) => !providedScopes.includes(scope),
+    );
+
+    if (missingScopes.length > 0) {
+      setErrorNode(
+        <div>
+          <h1>Error: Missing required scopes</h1>
+          <p>
+            The following required scopes are missing from the OAuth response:
+          </p>
+          <ul>
+            {missingScopes.map((scope) => (
+              <li key={scope}>
+                {scope.split("https://www.googleapis.com/auth/")[1] || scope}
+              </li>
+            ))}
+          </ul>
+          <p>
+            Please ensure you grant all required permissions and try signing in
+            again.
+          </p>
+        </div>,
+      );
+      return;
+    }
+
+    FetchGoogleWebAccessTokenAndRefreshToken(
+      params.queryParams.code,
+      params.oauthParams.verifier,
+    ).then((data) => {
+      if (data && data.access_token) {
+        data.user = decodeJWT(data.id_token);
+
+        if (isPrimaryAccount) {
+          setPrimaryAccount("google", data.user.email, data);
+        } else {
+          addSecondaryAccount("google", data.user.email, data);
+        }
+
+        navigate("/");
+      } else {
+        navigate("/signin?error=oauth_failed");
+      }
+    });
+  }, [params, navigate, setPrimaryAccount, addSecondaryAccount]);
+
+  if (errorNode) {
+    return errorNode;
+  }
 
   return (
     <div>
-      <h1>Google Web Redirect ... </h1>
+      <h1>Google Web Redirect ... Processing</h1>
     </div>
   );
 }

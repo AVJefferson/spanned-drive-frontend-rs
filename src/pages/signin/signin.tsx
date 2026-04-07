@@ -13,6 +13,7 @@ import {
 import "@mui/material/styles";
 import { Link } from "react-router-dom";
 import bgImage from "../../assets/signin-bg.avif";
+import { useSession } from "../../contexts/SessionContext";
 
 const GoogleIcon = () => (
   <svg
@@ -354,6 +355,8 @@ const FileSplitAnimation = () => {
 };
 
 const SignInPage = () => {
+  const { session } = useSession();
+
   const handleGoogleSignIn = () => {
     let url = "https://accounts.google.com/o/oauth2/v2/auth";
     url +=
@@ -377,12 +380,10 @@ const SignInPage = () => {
 
     url += "&prompt=consent";
     if (
-      localStorage.getItem("primary_account_provider") === "google" &&
-      localStorage.getItem("primary_account_email")
+      session?.primaryAccount?.provider === "google" &&
+      session.primaryAccount.email
     ) {
-      url +=
-        "&login_hint=" +
-        encodeURIComponent(localStorage.getItem("primary_account_email")!);
+      url += "&login_hint=" + encodeURIComponent(session.primaryAccount.email);
     }
 
     url += "&code_challenge_method=S256";

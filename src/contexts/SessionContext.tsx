@@ -95,12 +95,14 @@ const persistSessionStorageSession = (newSession: Session) => {
 };
 
 // TODO
-const syncSessionWithPrimaryDrive = (newSession: Session) => {};
+// const syncSessionWithPrimaryDrive = (newSession: Session) => {};
 
 const persistSession = (newSession: Session) => {
   persistLocalStorageSession(newSession);
   persistSessionStorageSession(newSession);
-  syncSessionWithPrimaryDrive(newSession);
+
+  // TODO
+  // syncSessionWithPrimaryDrive(newSession);
 };
 
 const initializeSession = (): Session => {
@@ -173,7 +175,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       if (data && data.access_token && data.expires_in) {
         setSessionState((prev: Session) => {
           if (!prev.primaryDrive) return prev;
-          
+
           let newSession: Session = {
             ...prev,
             primaryDrive: new Drives[prev.primaryDrive.provider]({
@@ -344,7 +346,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
               d.provider === driveToUpdate.provider,
           );
           if (secondaryIndex >= 0) {
-            updatedSecondary[secondaryIndex] = new Drives[updatedSecondary[secondaryIndex].provider]({
+            updatedSecondary[secondaryIndex] = new Drives[
+              updatedSecondary[secondaryIndex].provider
+            ]({
               ...updatedSecondary[secondaryIndex],
               access_token: newAccessToken,
               expires_in: newExpiresIn as number,

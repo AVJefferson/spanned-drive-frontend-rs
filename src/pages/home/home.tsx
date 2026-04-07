@@ -4,7 +4,7 @@ import { useSession } from "../../contexts/SessionContext";
 const HomePage = () => {
   const { session, isExpired } = useSession();
 
-  if (!session || !session.loggedIn || isExpired(session.primaryAccount)) {
+  if (!session || !session.primaryDrive || isExpired(session.primaryDrive)) {
     // navigate to signing page
     window.location.href = "/signin";
     return null;

@@ -379,11 +379,12 @@ const SignInPage = () => {
     url += `&state=primary~${secureRandom}`;
 
     url += "&prompt=consent";
+    url += "&access_type=offline";
     if (
-      session?.primaryAccount?.provider === "google" &&
-      session.primaryAccount.email
+      session?.primaryDrive?.provider === "google" &&
+      session.primaryDrive.email
     ) {
-      url += "&login_hint=" + encodeURIComponent(session.primaryAccount.email);
+      url += "&login_hint=" + encodeURIComponent(session.primaryDrive.email);
     }
 
     url += "&code_challenge_method=S256";

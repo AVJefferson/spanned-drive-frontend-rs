@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../../../contexts/SessionContext";
+import { GoogleDrive } from "../../../contexts/Drives/google-drive";
 
 const decodeJWT = (token: string) => {
   try {
@@ -44,7 +45,7 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
 }
 
 export default function GoogleWebRedirect(params: any) {
-  const { setPrimaryAccount, addSecondaryAccount } = useSession();
+  const { setPrimaryDrive, addSecondaryDrive } = useSession();
   const navigate = useNavigate();
   const [errorNode, setErrorNode] = useState<React.ReactNode | null>(null);
   const fetchedRef = useRef(false);
@@ -110,8 +111,7 @@ export default function GoogleWebRedirect(params: any) {
       return;
     }
 
-    const isPrimaryAccount =
-      params.queryParams.state.split("~")[0] === "primary";
+    const isPrimaryDrive = params.queryParams.state.split("~")[0] === "primary";
     const nonceFromState = params.queryParams.state.split("~")[1];
 
     if (nonceFromState !== params.oauthParams.nonce) {
@@ -171,10 +171,27 @@ export default function GoogleWebRedirect(params: any) {
       if (data && data.access_token) {
         data.user = decodeJWT(data.id_token);
 
-        if (isPrimaryAccount) {
-          setPrimaryAccount("google", data.user.email, data);
+        const drive = new GoogleDrive({
+          provider: "google",
+          email: data.user.email,
+          refresh_token: data.refresh_token,
+          acquired_at: Date.now(),
+          access_token: data.access_token,
+          expires_in: data.expires_in,
+          user: {
+            name: data.user.name,
+            picture: data.user.picture,
+            sub: data.user.sub,
+          },
+          drive_settings: {
+            allowed_space_usage_percent: 80,
+          },
+        });
+
+        if (isPrimaryDrive) {
+          setPrimaryDrive(drive);
         } else {
-          addSecondaryAccount("google", data.user.email, data);
+          addSecondaryDrive(drive);
         }
 
         navigate("/");
@@ -182,7 +199,7 @@ export default function GoogleWebRedirect(params: any) {
         navigate("/signin?error=oauth_failed");
       }
     });
-  }, [params, navigate, setPrimaryAccount, addSecondaryAccount]);
+  }, [params, navigate, setPrimaryDrive, addSecondaryDrive]);
 
   if (errorNode) {
     return errorNode;

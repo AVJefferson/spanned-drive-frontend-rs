@@ -373,7 +373,7 @@ const SignInPage = () => {
     let secureRandom = crypto
       .getRandomValues(new Uint32Array(1))[0]
       .toString(36);
-    url += `&state=${secureRandom}`;
+    url += `&state=primary~${secureRandom}`;
 
     url += "&prompt=consent";
     if (
@@ -418,8 +418,6 @@ const SignInPage = () => {
           challenge: codeChallenge,
         }),
       );
-
-      localStorage.setItem("oauth_url", url);
 
       window.location.href = url;
     });

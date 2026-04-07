@@ -33,17 +33,10 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
     }),
   })
     .then((response) => response.json())
-    .then((data) => {
-      data.user = decodeJWT(data.id_token);
-      localStorage.setItem(
-        `account_google_${data.user.email}`,
-        JSON.stringify(data),
-      );
-      return true;
-    })
+
     .catch((error) => {
       console.error("Error fetching access token:", error);
-      return false;
+      return {};
     });
 }
 
@@ -112,12 +105,14 @@ export default function GoogleWebRedirect(params: any) {
       </div>
     );
 
-  if (params.queryParams.state !== params.oauthParams.nonce) {
+  const isPrimaryAccount = params.queryParams.state.split("~")[0] === "primary";
+  const nonceFromState = params.queryParams.state.split("~")[1];
+  if (nonceFromState !== params.oauthParams.nonce) {
     return (
       <div>
         <h1>Error: Invalid state parameter</h1>
         <p>Expected state: {params.oauthParams.nonce}</p>
-        <p>Received state: {params.queryParams.state}</p>
+        <p>Received state: {nonceFromState}</p>
         <p>
           This could be a CSRF attack. Please do not proceed and contact support
           immediately.
@@ -162,11 +157,24 @@ export default function GoogleWebRedirect(params: any) {
   FetchGoogleWebAccessTokenAndRefreshToken(
     params.queryParams.code,
     params.oauthParams.verifier,
-  ).then((success) => {
-    if (success) {
-      localStorage.set;
+  ).then((data) => {
+    if (data) {
+      data.user = decodeJWT(data.id_token);
+
+      if (isPrimaryAccount) {
+        localStorage.setItem("primary_account_provider", "google");
+        localStorage.setItem("primary_account_email", data.user.email);
+        localStorage.setItem("primary_account", JSON.stringify(data));
+      } else {
+        localStorage.setItem(
+          `secondary_account_google_${data.user.email}`,
+          JSON.stringify(data),
+        );
+      }
+
       window.location.href = "/";
     } else {
+      window.location.href = "/signin?error=oauth_failed";
     }
   });
 

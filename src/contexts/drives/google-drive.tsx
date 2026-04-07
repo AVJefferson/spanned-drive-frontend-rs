@@ -4,7 +4,7 @@ import { FetchGoogleAccessToken } from "../../services/google/googleAuth.ts";
 export interface GoogleDriveSettings extends DriveSettings {}
 
 export class GoogleDrive implements Drive {
-  provider: string = "google";
+  provider: string = "google-drive";
   email: string;
 
   isPrimary?: boolean;
@@ -49,3 +49,5 @@ export class GoogleDrive implements Drive {
     Object.assign(this, data);
   }
 }
+
+export default GoogleDrive;

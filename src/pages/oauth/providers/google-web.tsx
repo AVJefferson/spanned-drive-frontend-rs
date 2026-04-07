@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../../../contexts/SessionContext";
-import { GoogleDrive } from "../../../contexts/Drives/google-drive";
+import { GoogleDrive } from "../../../contexts/drives/google-drive";
 
 const decodeJWT = (token: string) => {
   try {
@@ -172,17 +172,20 @@ export default function GoogleWebRedirect(params: any) {
         data.user = decodeJWT(data.id_token);
 
         const drive = new GoogleDrive({
-          provider: "google",
           email: data.user.email,
+
           refresh_token: data.refresh_token,
-          acquired_at: Date.now(),
+
           access_token: data.access_token,
+          acquired_at: Date.now(),
           expires_in: data.expires_in,
+
           user: {
             name: data.user.name,
             picture: data.user.picture,
             sub: data.user.sub,
           },
+
           drive_settings: {
             allowed_space_usage_percent: 80,
           },

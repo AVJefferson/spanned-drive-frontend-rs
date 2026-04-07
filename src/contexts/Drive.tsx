@@ -29,5 +29,11 @@ export interface Drive {
 
   drive_settings?: DriveSettings;
 
-  fetch_access_token?: () => Promise<any>;
+  fetch_access_token: () => Promise<any>;
 }
+
+import { GoogleDrive } from "./drives/google-drive";
+
+export const Drives: { [key: string]: any } = {
+  "google-drive": GoogleDrive,
+};

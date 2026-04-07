@@ -22,7 +22,6 @@ const OauthRedirectPages = () => {
       : {},
   };
 
-  console.log({ providers, params, provider });
   const ProviderComponent = providers[`./providers/${provider}.tsx`]?.default;
   if (!ProviderComponent) return <h1>Provider not found</h1>;
 

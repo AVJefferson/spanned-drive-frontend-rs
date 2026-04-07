@@ -3,10 +3,11 @@ import { useSession } from "../../contexts/SessionContext";
 
 const HomePage = () => {
   const { session, isExpired } = useSession();
+  console.log({ session }, "isexpired=", isExpired(session.primaryDrive));
 
   if (!session || !session.primaryDrive || isExpired(session.primaryDrive)) {
-    // navigate to signing page
-    window.location.href = "/signin";
+    // // navigate to signing page
+    // window.location.href = "/signin";
     return null;
   }
 

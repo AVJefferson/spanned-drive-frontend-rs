@@ -381,7 +381,7 @@ const SignInPage = () => {
     url += "&prompt=consent";
     url += "&access_type=offline";
     if (
-      session?.primaryDrive?.provider === "google" &&
+      session?.primaryDrive?.provider === "google-drive" &&
       session.primaryDrive.email
     ) {
       url += "&login_hint=" + encodeURIComponent(session.primaryDrive.email);

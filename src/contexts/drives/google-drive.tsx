@@ -1,5 +1,5 @@
-import { Drive, DriveSettings } from "../Drive.tsx";
-import { FetchGoogleAccessToken } from "../../services/google/googleAuth.ts";
+import { Drive, DriveSettings } from "../Drive";
+import { FetchGoogleAccessToken } from "../../services/google/google-auth";
 
 export interface GoogleDriveSettings extends DriveSettings {}
 

@@ -8,11 +8,9 @@ import {
 } from "react";
 
 import { Drive, Drives } from "./Drive.tsx";
-
-export interface Session {
-  primaryDrive: Drive | null;
-  secondaryDrives: Drive[];
-}
+import { SavePersistentSession } from "../services/browser/save-persistent-session.tsx";
+import { SaveTemporarySession } from "../services/browser/save-temporary-session.tsx";
+import { Session } from "./Session.tsx";
 
 interface SessionContextType {
   session: Session;
@@ -32,74 +30,9 @@ const emptySession: Session = {
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-const extractLocalData = (drive: Drive | null) => {
-  if (!drive) return null;
-  return {
-    provider: drive.provider,
-    email: drive.email,
-
-    isPrimary: drive.isPrimary,
-    isSecondary: drive.isSecondary,
-
-    parent_drive: drive.parent_drive,
-    associated_drives: drive.associated_drives,
-
-    refresh_token: drive.refresh_token,
-    scope: drive.scope,
-
-    user: drive.user,
-
-    drive_settings: drive.drive_settings,
-  };
-};
-
-const extractSessionData = (drive: Drive | null) => {
-  if (!drive) return null;
-  return {
-    provider: drive.provider,
-    email: drive.email,
-
-    isPrimary: drive.isPrimary,
-    isSecondary: drive.isSecondary,
-
-    parent_drive: drive.parent_drive,
-    associated_drives: drive.associated_drives,
-
-    access_token: drive.access_token,
-    expires_in: drive.expires_in,
-    acquired_at: drive.acquired_at,
-
-    total_space: drive.total_space,
-    used_space: drive.used_space,
-
-    user: drive.user,
-    drive_settings: drive.drive_settings,
-  };
-};
-
-const persistLocalStorageSession = (newSession: Session) => {
-  const localStorageSessionData = {
-    primaryDrive: extractLocalData(newSession.primaryDrive),
-    secondaryDrives: newSession.secondaryDrives.map(extractLocalData),
-  };
-  localStorage.setItem("session", JSON.stringify(localStorageSessionData));
-};
-
-const persistSessionStorageSession = (newSession: Session) => {
-  const sessionStorageSessionData = {
-    primaryDrive: extractSessionData(newSession.primaryDrive),
-    secondaryDrives: newSession.secondaryDrives.map(extractSessionData),
-  };
-
-  sessionStorage.setItem("session", JSON.stringify(sessionStorageSessionData));
-};
-
-// TODO
-// const syncSessionWithPrimaryDrive = (newSession: Session) => {};
-
 const persistSession = (newSession: Session) => {
-  persistLocalStorageSession(newSession);
-  persistSessionStorageSession(newSession);
+  SavePersistentSession(newSession);
+  SaveTemporarySession(newSession);
 
   // TODO
   // syncSessionWithPrimaryDrive(newSession);
@@ -363,7 +296,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
               secondaryDrives: updatedSecondary,
             };
             // Only update session storage with access tokens!
-            persistSessionStorageSession(newSession);
+            SaveTemporarySession(newSession);
             return newSession;
           }
           return prev;

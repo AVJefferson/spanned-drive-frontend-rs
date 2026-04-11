@@ -50,4 +50,4 @@ const Drives: { [key: string]: any } = DriveImplementations.reduce(
   {},
 );
 
-export default Drives;
+export { Drives };

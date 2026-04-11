@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../../../contexts/SessionContext";
 import { GoogleDrive } from "../../../contexts/drives/google-drive";
+import { FetchGoogleWebAccessTokenAndRefreshToken } from "../../../services/google/google-auth";
 
 const decodeJWT = (token: string) => {
   try {
@@ -16,33 +17,6 @@ const decodeJWT = (token: string) => {
     return null;
   }
 };
-
-export function FetchGoogleWebAccessTokenAndRefreshToken(
-  code: string,
-  codeVerifier: string,
-) {
-  let url = "https://oauth2.googleapis.com/token";
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
-      code: code,
-      code_verifier: codeVerifier,
-
-      grant_type: "authorization_code",
-      redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
-    }),
-  })
-    .then((response) => response.json())
-    .catch((error) => {
-      console.error("Error fetching access token:", error);
-      return {};
-    });
-}
 
 export default function GoogleWebRedirect(params: any) {
   const { setPrimaryDrive, addSecondaryDrive } = useSession();

@@ -32,8 +32,22 @@ export interface Drive {
   fetch_access_token: () => Promise<any>;
 }
 
-import { GoogleDrive } from "./drives/google-drive";
+const DriveImplementations: Record<string, any> = import.meta.glob(
+  "./drives/*.tsx",
+  {
+    eager: true,
+  },
+);
 
-export const Drives: { [key: string]: any } = {
-  "google-drive": GoogleDrive,
-};
+const Drives: { [key: string]: any } = DriveImplementations.reduce(
+  (acc: { [key: string]: any }, module: any) => {
+    const driveClass = module.default;
+    if (driveClass && driveClass.provider) {
+      acc[driveClass.provider] = driveClass;
+    }
+    return acc;
+  },
+  {},
+);
+
+export default Drives;

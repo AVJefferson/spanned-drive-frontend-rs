@@ -1,20 +1,9 @@
-import { useRouteError, isRouteErrorResponse, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Box, Typography, Button } from "@mui/material";
 
 export default function ErrorPage() {
-  const error = useRouteError();
-
-  let errorMessage: string;
-  let errorStatus: number | undefined;
-
-  if (isRouteErrorResponse(error)) {
-    errorStatus = error.status;
-    errorMessage = error.statusText || error.data?.message;
-  } else if (error instanceof Error) {
-    errorMessage = error.message;
-  } else {
-    errorMessage = "An unknown error occurred.";
-  }
+  const errorMessage = new URLSearchParams(window.location.search).get("error");
+  const errorStatus = new URLSearchParams(window.location.search).get("status");
 
   return (
     <Box

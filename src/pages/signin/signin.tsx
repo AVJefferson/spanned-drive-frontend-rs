@@ -13,7 +13,7 @@ import {
 import "@mui/material/styles";
 import { Link } from "react-router-dom";
 import bgImage from "../../assets/signin-bg.avif";
-import { useSession } from "../../contexts/SessionContext";
+import { default as handleGoogleSignIn } from "../../services/google/google-oauth-signin";
 
 const GoogleIcon = () => (
   <svg
@@ -54,6 +54,18 @@ const MicrosoftIcon = () => (
       d="M10 21H0V11h10v10zM21 21H11V11h10v10zM10 10H0V0h10v10zM21 10H11V0h10v10z"
       fill="#00a4ef"
     />
+  </svg>
+);
+
+const OthersIcon = () => (
+  <svg
+    width="21"
+    height="21"
+    viewBox="0 0 21 21"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M10 21H0V11h10V0h10v10zM21 10H11V0h10v10z" fill="currentColor" />
   </svg>
 );
 
@@ -355,78 +367,12 @@ const FileSplitAnimation = () => {
 };
 
 const SignInPage = () => {
-  const { session } = useSession();
-
-  const handleGoogleSignIn = () => {
-    let url = "https://accounts.google.com/o/oauth2/v2/auth";
-    url +=
-      "?client_id=" + encodeURIComponent(import.meta.env.VITE_GOOGLE_CLIENT_ID);
-    url +=
-      "&redirect_uri=" +
-      encodeURIComponent(import.meta.env.VITE_GOOGLE_REDIRECT_URI);
-
-    url += "&response_type=code";
-    url +=
-      "&scope=" +
-      encodeURIComponent(
-        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
-      );
-
-    // Use state to pass a random Nonce for CSRF protection and to maintain any necessary state between the request and callback.
-    let secureRandom = crypto
-      .getRandomValues(new Uint32Array(1))[0]
-      .toString(36);
-    url += `&state=primary~${secureRandom}`;
-
-    url += "&prompt=consent";
-    url += "&access_type=offline";
-    if (
-      session?.primaryDrive?.provider === "google-drive" &&
-      session.primaryDrive.email
-    ) {
-      url += "&login_hint=" + encodeURIComponent(session.primaryDrive.email);
-    }
-
-    url += "&code_challenge_method=S256";
-    // 1. Generate Verifier (Using a more URL-safe approach to avoid encoding issues)
-    const charset =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-    const verifierArray = crypto.getRandomValues(new Uint8Array(64));
-    const codeVerifier = Array.from(verifierArray)
-      .map((x) => charset[x % charset.length])
-      .join("");
-
-    // 2. SHA-256 Hashing (Required for S256 method)
-    const encoder = new TextEncoder();
-    const data = encoder.encode(codeVerifier);
-
-    crypto.subtle.digest("SHA-256", data).then((hashBuffer) => {
-      // 3. Base64URL Encode the HASH
-      const codeChallenge = btoa(
-        String.fromCharCode(...new Uint8Array(hashBuffer)),
-      )
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-      url += `&code_challenge=${codeChallenge}`;
-
-      localStorage.setItem(
-        "oauth_params",
-        JSON.stringify({
-          provider: "google-web",
-          timestamp: Date.now(),
-          nonce: secureRandom,
-          verifier: codeVerifier,
-          challenge: codeChallenge,
-        }),
-      );
-
-      window.location.href = url;
-    });
-  };
-
   const handleMicrosoftSignIn = () => {
     // TODO: Implement Microsoft (OneDrive) OAuth
+  };
+
+  const handleGenericSignIn = () => {
+    // TODO: Implement Generic OAuth
   };
 
   return (
@@ -546,10 +492,7 @@ const SignInPage = () => {
                     fontWeight="bold"
                     gutterBottom
                   >
-                    Welcome back
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    Sign in to access your dashboard
+                    SIGNIN TO SPANNED DRIVE
                   </Typography>
                 </Box>
 
@@ -589,6 +532,25 @@ const SignInPage = () => {
                   }}
                 >
                   Continue with Microsoft
+                </Button>
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="large"
+                  startIcon={<OthersIcon />}
+                  onClick={handleGenericSignIn}
+                  sx={{
+                    py: 1.5,
+                    borderColor: "grey.300",
+                    color: "text.primary",
+                    "&:hover": {
+                      borderColor: "grey.400",
+                      bgcolor: "action.hover",
+                    },
+                  }}
+                >
+                  Continue with Others
                 </Button>
 
                 <Box sx={{ mt: 3, textAlign: "center" }}>

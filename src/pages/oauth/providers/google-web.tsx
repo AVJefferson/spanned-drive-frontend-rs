@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSession } from "../../../contexts/SessionContext";
 import { GoogleDrive } from "../../../contexts/drives/google-drive";
 import { FetchGoogleWebAccessTokenAndRefreshToken } from "../../../services/google/google-auth";
+import saveDrive from "../../../services/browser/save-drive";
 
 const decodeJWT = (token: string) => {
   try {
@@ -149,9 +150,10 @@ export default function GoogleWebRedirect(params: any) {
           email: data.user.email,
 
           refresh_token: data.refresh_token,
+          acquired_at: Date.now(),
+          scope: data.scope.split(" "),
 
           access_token: data.access_token,
-          acquired_at: Date.now(),
           expires_in: data.expires_in,
 
           user: {
@@ -163,7 +165,13 @@ export default function GoogleWebRedirect(params: any) {
           drive_settings: {
             allowed_space_usage_percent: 80,
           },
+
+          drive_details: {},
+
+          drive_span: {},
         });
+
+        saveDrive(drive);
 
         if (isPrimaryDrive) {
           setPrimaryDrive(drive);
@@ -176,7 +184,7 @@ export default function GoogleWebRedirect(params: any) {
 
         navigate("/");
       } else {
-        navigate("/signin?error=oauth_failed");
+        navigate("/error?error=Oauth%20Failed");
       }
     });
   }, [params, navigate, setPrimaryDrive, addSecondaryDrive]);

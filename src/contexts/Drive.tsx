@@ -39,7 +39,7 @@ const DriveImplementations: Record<string, any> = import.meta.glob(
   },
 );
 
-const Drives: { [key: string]: any } = DriveImplementations.reduce(
+const Drives: { [key: string]: any } = [DriveImplementations].reduce(
   (acc: { [key: string]: any }, module: any) => {
     const driveClass = module.default;
     if (driveClass && driveClass.provider) {

@@ -100,32 +100,40 @@ const initializeSession = (): Session => {
 };
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSessionState] = useState<Session>(initializeSession);
+  const [session, setSessionState] = useState<Session>(emptySession);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    if (!session.primaryDrive) return;
-
-    session.primaryDrive?.fetch_access_token?.().then((data: any) => {
-      if (data && data.access_token && data.expires_in) {
-        setSessionState((prev: Session) => {
-          if (!prev.primaryDrive) return prev;
-
-          let newSession: Session = {
-            ...prev,
-            primaryDrive: new Drives[prev.primaryDrive.provider]({
-              ...prev.primaryDrive,
-              access_token: data.access_token,
-              expires_in: data.expires_in,
-            }),
-          };
-          persistSession(newSession);
-          return newSession;
-        });
+    const init = async () => {
+      const initialSession = initializeSession();
+      if (!initialSession.primaryDrive) {
+        setSessionState(initialSession);
+        setIsInitializing(false);
+        return;
       }
-    });
 
-    //TODO: Fetch secondary drive details from googledrive/onedrive api
-    // and update session with latest refresh tokens for secondary drives
+      try {
+        const data = await initialSession.primaryDrive.fetch_access_token?.();
+        if (data && data.access_token && data.expires_in) {
+          initialSession.primaryDrive = new Drives[initialSession.primaryDrive.provider]({
+            ...initialSession.primaryDrive,
+            access_token: data.access_token,
+            expires_in: data.expires_in,
+          });
+          persistSession(initialSession);
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial access token", err);
+      }
+
+      setSessionState(initialSession);
+      setIsInitializing(false);
+
+      //TODO: Fetch secondary drive details from googledrive/onedrive api
+      // and update session with latest refresh tokens for secondary drives
+    };
+
+    init();
   }, []);
 
   const setPrimaryDrive = useCallback((primaryDrive: Drive) => {
@@ -300,6 +308,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     },
     [session.primaryDrive],
   );
+
+  if (isInitializing) {
+    return null; // Or a loading spinner if preferred
+  }
 
   return (
     <SessionContext.Provider

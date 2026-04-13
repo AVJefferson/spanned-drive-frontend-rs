@@ -1,25 +1,25 @@
 export interface DriveSettings {
-  allowed_space_usage_percent?: number;
+  [key: string]: any;
 }
+
+export interface DriveDetails {
+  [key: string]: any;
+}
+
+export interface DriveSpan {
+  [key: string]: any;
+}
+
 export interface Drive {
   provider: string;
   email: string;
 
-  isPrimary?: boolean;
-  isSecondary?: boolean;
-
-  parent_drive?: string;
-  associated_drives?: string[];
-
   refresh_token: string;
   acquired_at: number;
-  scope?: string;
+  scope?: string[];
 
   access_token?: string;
   expires_in?: number;
-
-  total_space?: number;
-  used_space?: number;
 
   user?: {
     name?: string;
@@ -28,6 +28,8 @@ export interface Drive {
   };
 
   drive_settings?: DriveSettings;
+  drive_details?: DriveDetails;
+  drive_span?: DriveSpan;
 
   fetch_access_token: () => Promise<any>;
 }

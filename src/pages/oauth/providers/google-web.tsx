@@ -87,6 +87,9 @@ export default function GoogleWebRedirect(params: any) {
     }
 
     const isPrimaryDrive = params.queryParams.state.split("~")[0] === "primary";
+    const isSecondaryDrive =
+      params.queryParams.state.split("~")[0] === "secondary";
+
     const nonceFromState = params.queryParams.state.split("~")[1];
 
     if (nonceFromState !== params.oauthParams.nonce) {
@@ -166,21 +169,29 @@ export default function GoogleWebRedirect(params: any) {
             allowed_space_usage_percent: 80,
           },
 
-          drive_details: {},
+          drive_details: {
+            isPrimaryDrive: isPrimaryDrive,
+            isSecondaryDrive: !isSecondaryDrive,
+
+            total_space: 0,
+            used_space: 0,
+            free_space: 0,
+          },
 
           drive_span: {},
         });
 
         saveDrive(drive);
+        localStorage.removeItem("oauth_params");
 
         if (isPrimaryDrive) {
           setPrimaryDrive(drive);
-        } else {
+        } else if (isSecondaryDrive) {
           addSecondaryDrive(drive);
+        } else {
+          navigate("/error?error=Oauth%20Failed%20due%20to%20invalid%20state");
+          return <div></div>;
         }
-
-        // Remove the nonce used for oauth
-        localStorage.removeItem("oauth_params");
 
         navigate("/");
       } else {

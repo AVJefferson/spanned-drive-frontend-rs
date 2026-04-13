@@ -16,6 +16,7 @@ interface SessionContextType {
   session: Session;
   setPrimaryDrive: (primaryDrive: Drive) => void;
   addSecondaryDrive: (newSecondaryDrive: Drive) => void;
+
   removeDrive: (drive: Drive) => void;
   logout: () => void;
 
@@ -30,9 +31,9 @@ const emptySession: Session = {
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-const persistSession = (newSession: Session) => {
-  SavePersistentSession(newSession);
-  SaveTemporarySession(newSession);
+const persistSession = (session: Session) => {
+  SavePersistentSession(session);
+  SaveTemporarySession(session);
 
   // TODO
   // syncSessionWithPrimaryDrive(newSession);
@@ -132,8 +133,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       // preserve existing primary
       if (!primaryDrive) return prev;
 
-      primaryDrive.isPrimary = true;
-      primaryDrive.isSecondary = false;
       const newSession: Session = {
         primaryDrive: primaryDrive,
         secondaryDrives: [],
@@ -167,10 +166,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       } else {
         newSecondaryDrives.push(newSecondaryDrive);
       }
-
-      newSecondaryDrive.parent_drive = prev.primaryDrive?.email || undefined;
-      newSecondaryDrive.isPrimary = false;
-      newSecondaryDrive.isSecondary = true;
 
       const newSession = {
         ...prev,

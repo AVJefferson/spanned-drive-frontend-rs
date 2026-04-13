@@ -1,6 +1,9 @@
-import { Box, Grid, Paper, Typography, Tab, Tabs, Button } from "@mui/material";
-import { useSession } from "../../contexts/SessionContext";
 import { useEffect, useState } from "react";
+import { Box, Grid, Paper, Typography, Tab, Tabs, Button } from "@mui/material";
+
+import { useSession } from "../../contexts/SessionContext";
+
+import { InfoTab, SettingsTab, DrivesTab, TasksTab } from "./right-pane-tabs";
 
 const HomePage = () => {
   const { session, isExpired } = useSession();
@@ -176,13 +179,13 @@ const HomePage = () => {
           </Tabs>
           <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
             <TabPanel value={selectedRhsTab} index={0}>
-              Item One
+              <DrivesTab />
             </TabPanel>
             <TabPanel value={selectedRhsTab} index={1}>
-              Item Two
+              {selectedLogicalDirPath ? <InfoTab /> : <SettingsTab />}
             </TabPanel>
             <TabPanel value={selectedRhsTab} index={2}>
-              Tasks
+              <TasksTab />
             </TabPanel>
           </Box>
         </Grid>

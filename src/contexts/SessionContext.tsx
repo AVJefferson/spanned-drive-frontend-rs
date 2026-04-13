@@ -115,7 +115,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       try {
         const data = await initialSession.primaryDrive.fetch_access_token?.();
         if (data && data.access_token && data.expires_in) {
-          initialSession.primaryDrive = new Drives[initialSession.primaryDrive.provider]({
+          initialSession.primaryDrive = new Drives[
+            initialSession.primaryDrive.provider
+          ]({
             ...initialSession.primaryDrive,
             access_token: data.access_token,
             expires_in: data.expires_in,

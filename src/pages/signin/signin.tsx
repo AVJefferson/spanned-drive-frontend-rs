@@ -643,9 +643,9 @@ const SignInPage = () => {
                 sx={{
                   p: { xs: 4, md: 6 },
                   borderRadius: 4,
-                  bgcolor: "grey.50",
+                  bgcolor: "background.paper",
                   border: "1px solid",
-                  borderColor: "grey.200",
+                  borderColor: "divider",
                 }}
               >
                 <Grid container spacing={6} alignItems="center">
@@ -713,7 +713,7 @@ const SignInPage = () => {
           sx={{
             p: 1,
             px: { xs: 1, sm: 2 },
-            bgcolor: "rgba(255, 255, 255, 0.9)",
+            bgcolor: "background.paper",
             borderRadius: 2,
             display: "flex",
             alignItems: "center",

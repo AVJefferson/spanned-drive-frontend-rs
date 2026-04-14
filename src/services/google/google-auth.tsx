@@ -1,4 +1,5 @@
 const backendUrl = import.meta.env.VITE_SDRIVE_BACKEND_URL;
+const authHeader = `Bearer ${import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN}`
 
 export function FetchGoogleAccessToken(refresh_token: string): Promise<any> {
   const url = `${backendUrl}/token/google-web/access_token`;
@@ -6,7 +7,7 @@ export function FetchGoogleAccessToken(refresh_token: string): Promise<any> {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN}`,
+      Authorization: authHeader,
     },
     body: JSON.stringify({
       refresh_token: refresh_token,
@@ -28,7 +29,7 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN}`,
+      Authorization: authHeader,
     },
     body: JSON.stringify({
       code: code,

@@ -1,3 +1,5 @@
+import { JSX } from "react";
+
 export interface DriveSettings {
   [key: string]: any;
 }
@@ -12,6 +14,7 @@ export interface DriveSpan {
 
 export interface Drive {
   provider: string;
+  provider_icon: () => JSX.Element;
   email: string;
 
   refresh_token: string;

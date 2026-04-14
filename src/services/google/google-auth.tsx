@@ -1,15 +1,15 @@
+const backendUrl = import.meta.env.VITE_SDRIVE_BACKEND_URL;
+
 export function FetchGoogleAccessToken(refresh_token: string): Promise<any> {
-  const url = "https://oauth2.googleapis.com/token";
+  const url = `${backendUrl}/token/google-web/access_token`;
   return fetch(url, {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN}`,
     },
-    body: new URLSearchParams({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
+    body: JSON.stringify({
       refresh_token: refresh_token,
-      grant_type: "refresh_token",
     }),
   })
     .then((response) => response.json())
@@ -23,19 +23,16 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
   code: string,
   codeVerifier: string,
 ): Promise<any> {
-  const url = "https://oauth2.googleapis.com/token";
+  const url = `${backendUrl}/token/google-web/refresh_token`;
   return fetch(url, {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN}`,
     },
-    body: new URLSearchParams({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
+    body: JSON.stringify({
       code: code,
       code_verifier: codeVerifier,
-
-      grant_type: "authorization_code",
       redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
     }),
   })

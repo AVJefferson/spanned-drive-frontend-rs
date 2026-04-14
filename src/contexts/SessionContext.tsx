@@ -16,7 +16,6 @@ import { LogoutFromLocalStorage } from "../services/browser/logout.tsx";
 
 interface SessionContextType {
   session: Session;
-  sessionIsInitialised: Promise<void>;
 
   setPrimaryDrive: (primaryDrive: Drive) => void;
   addSecondaryDrive: (newSecondaryDrive: Drive) => void;
@@ -31,7 +30,9 @@ const initializeSessionFromLocalStorage = (): Session =>
   RetreivePersistentSession();
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSessionState] = useState<Session>(emptySession);
+  const [session, setSessionState] = useState<Session>(
+    initializeSessionFromLocalStorage(),
+  );
 
   useEffect(() => {
     console.log("new session", { session });
@@ -39,10 +40,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       SavePersistentSession(session);
     }
   }, [session]);
-
-  useEffect(() => {
-    setSessionState(initializeSessionFromLocalStorage());
-  }, []);
 
   const setPrimaryDrive = useCallback((primaryDrive: Drive) => {
     setSessionState((prev) => {
@@ -133,7 +130,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     <SessionContext.Provider
       value={{
         session,
-        sessionIsInitialised,
 
         setPrimaryDrive,
         addSecondaryDrive,

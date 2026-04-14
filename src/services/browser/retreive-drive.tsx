@@ -8,7 +8,12 @@ export function RetreiveDrive(provider: string, email: string = "") {
 
   try {
     let drive = JSON.parse(driveString);
-    return new Drives[provider](drive);
+
+    let driveObject = new Drives[provider](drive);
+
+    if (!driveObject) return null;
+
+    return driveObject;
   } catch {
     return null;
   }

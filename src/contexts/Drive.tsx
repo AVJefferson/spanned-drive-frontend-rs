@@ -44,15 +44,18 @@ const DriveImplementations: Record<string, any> = import.meta.glob(
   },
 );
 
-const Drives: { [key: string]: any } = [DriveImplementations].reduce(
-  (acc: { [key: string]: any }, module: any) => {
-    const driveClass = module.default;
-    if (driveClass && driveClass.provider) {
-      acc[driveClass.provider] = driveClass;
+const Drives: { [key: string]: any } = Object.keys(DriveImplementations).reduce(
+  (acc, path) => {
+    const driveModule = DriveImplementations[path];
+    if (driveModule && driveModule.default) {
+      const driveName = path.split("/").pop()?.replace(".tsx", "");
+      if (!driveName) return acc;
+      
+      acc[driveName] = driveModule.default;
     }
     return acc;
   },
-  {},
+  {} as Record<string, any>,
 );
 
 export { Drives };

@@ -5,8 +5,8 @@ import { useSession } from "../../contexts/SessionContext";
 
 import { InfoTab, SettingsTab, DrivesTab, TasksTab } from "./right-pane-tabs";
 
-const HomePage = async () => {
-  const { session, sessionIsInitialised } = useSession();
+const HomePage = () => {
+  const { session } = useSession();
 
   const [logicalFolders, setLogicalFolders] = useState([]);
   const [selectedLogicalDirPath, setSelectedLogicalDirPath] = useState(null);
@@ -14,9 +14,9 @@ const HomePage = async () => {
 
   const [selectedRhsTab, setSelectedRhsTab] = useState(0);
 
-  await sessionIsInitialised;
   if (!session || !session.primaryDrive) {
     // navigate to signing page
+    console.log({ session });
     window.location.href = "/signin";
     return null;
   }

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSession } from "../../../contexts/SessionContext";
 import { GoogleDrive } from "../../../contexts/drives/google-drive";
 import { FetchGoogleWebAccessTokenAndRefreshToken } from "../../../services/google/google-auth";
-import saveDrive from "../../../services/browser/save-drive";
+import { SaveDrive } from "../../../services/browser/save-drive";
 
 const decodeJWT = (token: string) => {
   try {
@@ -181,7 +181,7 @@ export default function GoogleWebRedirect(params: any) {
           drive_span: {},
         });
 
-        saveDrive(drive);
+        SaveDrive(drive);
         localStorage.removeItem("oauth_params");
 
         if (isPrimaryDrive) {

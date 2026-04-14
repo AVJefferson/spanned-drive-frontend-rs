@@ -1,6 +1,8 @@
 import { Drives } from "../../contexts/Drive";
 
-export default function RetreiveDrive(provider: string, email: string) {
+export function RetreiveDrive(provider: string, email: string = "") {
+  if (!provider) return null;
+
   let driveString = localStorage.getItem(`drive-${provider}-${email}`);
   if (!driveString) return null;
 

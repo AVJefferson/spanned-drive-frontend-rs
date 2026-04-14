@@ -1,4 +1,4 @@
-export default function LogoutFromLocalStorage() {
+export function LogoutFromLocalStorage() {
   sessionStorage.clear();
   const sessionString = localStorage.getItem("session");
 

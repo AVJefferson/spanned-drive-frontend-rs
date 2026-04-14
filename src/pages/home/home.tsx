@@ -5,10 +5,8 @@ import { useSession } from "../../contexts/SessionContext";
 
 import { InfoTab, SettingsTab, DrivesTab, TasksTab } from "./right-pane-tabs";
 
-const HomePage = () => {
-  const { session, isExpired } = useSession();
-  const [primaryDrive, setPrimaryDrive] = useState(null);
-  const [secondaryDrives, setSecondaryDrives] = useState([]);
+const HomePage = async () => {
+  const { session, sessionIsInitialised } = useSession();
 
   const [logicalFolders, setLogicalFolders] = useState([]);
   const [selectedLogicalDirPath, setSelectedLogicalDirPath] = useState(null);
@@ -16,15 +14,12 @@ const HomePage = () => {
 
   const [selectedRhsTab, setSelectedRhsTab] = useState(0);
 
-  useEffect(() => {
-    if (!session) return;
-  }, [session]);
-
-  // if (!session || !session.primaryDrive || isExpired(session.primaryDrive)) {
-  //   // // navigate to signing page
-  //   window.location.href = "/signin";
-  //   return null;
-  // }
+  await sessionIsInitialised;
+  if (!session || !session.primaryDrive) {
+    // navigate to signing page
+    window.location.href = "/signin";
+    return null;
+  }
 
   interface TabPanelProps {
     children?: React.ReactNode;
@@ -60,7 +55,7 @@ const HomePage = () => {
   }
 
   const handleRhsTabChange = (
-    event: React.SyntheticEvent,
+    _event: React.SyntheticEvent,
     newValue: number,
   ) => {
     setSelectedRhsTab(newValue);
@@ -179,7 +174,10 @@ const HomePage = () => {
           </Tabs>
           <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
             <TabPanel value={selectedRhsTab} index={0}>
-              <DrivesTab />
+              <DrivesTab
+                primaryDrive={session.primaryDrive}
+                secondaryDrives={session.secondaryDrives}
+              />
             </TabPanel>
             <TabPanel value={selectedRhsTab} index={1}>
               {selectedLogicalDirPath ? <InfoTab /> : <SettingsTab />}

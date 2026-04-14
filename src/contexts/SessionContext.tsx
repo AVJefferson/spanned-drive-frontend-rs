@@ -7,135 +7,41 @@ import {
   useCallback,
 } from "react";
 
-import { Drive, Drives } from "./Drive.tsx";
+import { Drive } from "./Drive.tsx";
+import { Session, emptySession } from "./Session.tsx";
+
 import { SavePersistentSession } from "../services/browser/save-persistent-session.tsx";
-import { SaveTemporarySession } from "../services/browser/save-temporary-session.tsx";
-import { Session } from "./Session.tsx";
+import { RetreivePersistentSession } from "../services/browser/retreive-persistent-session.tsx";
+import { LogoutFromLocalStorage } from "../services/browser/logout.tsx";
 
 interface SessionContextType {
   session: Session;
+  sessionIsInitialised: Promise<void>;
+
   setPrimaryDrive: (primaryDrive: Drive) => void;
   addSecondaryDrive: (newSecondaryDrive: Drive) => void;
+  removeSecondaryDrive: (drive: Drive) => void;
 
-  removeDrive: (drive: Drive) => void;
   logout: () => void;
-
-  isExpired: (drive: Drive | null) => boolean;
-  populateSessionStorage: (drive: Drive | null) => Promise<void>;
 }
-
-const emptySession: Session = {
-  primaryDrive: null,
-  secondaryDrives: [],
-};
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-const persistSession = (session: Session) => {
-  SavePersistentSession(session);
-  SaveTemporarySession(session);
-
-  // TODO
-  // syncSessionWithPrimaryDrive(newSession);
-};
-
-const initializeSession = (): Session => {
-  const localDataStr = localStorage.getItem("session");
-  const sessionDataStr = sessionStorage.getItem("session");
-
-  if (localDataStr) {
-    try {
-      const localData = JSON.parse(localDataStr);
-      let sessionData = null;
-      if (sessionDataStr) {
-        try {
-          sessionData = JSON.parse(sessionDataStr);
-        } catch (e) {
-          console.error("Failed to parse session from sessionStorage:", e);
-        }
-      }
-
-      let primaryDrive: Drive = new Drives[localData.primaryDrive.provider](
-        localData.primaryDrive,
-      );
-
-      if (
-        primaryDrive &&
-        sessionData?.primaryDrive &&
-        sessionData.primaryDrive.email === primaryDrive.email &&
-        sessionData.primaryDrive.provider === primaryDrive.provider
-      ) {
-        primaryDrive = new Drives[primaryDrive.provider]({
-          ...primaryDrive,
-          ...sessionData.primaryDrive,
-        });
-      }
-
-      let secondaryDrives = [];
-      if (localData.secondaryDrives)
-        secondaryDrives = localData.secondaryDrives.map((ld: any) => {
-          new Drives[ld.provider](ld);
-        });
-
-      if (sessionData?.secondaryDrives) {
-        secondaryDrives = secondaryDrives.map((ld: any) => {
-          const sd = sessionData.secondaryDrives.find(
-            (s: any) => s.email === ld.email && s.provider === ld.provider,
-          );
-          return sd ? new Drives[ld.provider]({ ...ld, ...sd }) : ld;
-        });
-      }
-
-      return {
-        primaryDrive,
-        secondaryDrives,
-      };
-    } catch (e) {
-      console.error("Failed to parse session from localStorage:", e);
-      localStorage.removeItem("session");
-    }
-  }
-
-  return emptySession;
-};
+const initializeSessionFromLocalStorage = (): Session =>
+  RetreivePersistentSession();
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSessionState] = useState<Session>(emptySession);
-  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    const init = async () => {
-      const initialSession = initializeSession();
-      if (!initialSession.primaryDrive) {
-        setSessionState(initialSession);
-        setIsInitializing(false);
-        return;
-      }
+    console.log("new session", { session });
+    if (session && session.primaryDrive) {
+      SavePersistentSession(session);
+    }
+  }, [session]);
 
-      try {
-        const data = await initialSession.primaryDrive.fetch_access_token?.();
-        if (data && data.access_token && data.expires_in) {
-          initialSession.primaryDrive = new Drives[
-            initialSession.primaryDrive.provider
-          ]({
-            ...initialSession.primaryDrive,
-            access_token: data.access_token,
-            expires_in: data.expires_in,
-          });
-          persistSession(initialSession);
-        }
-      } catch (err) {
-        console.error("Failed to fetch initial access token", err);
-      }
-
-      setSessionState(initialSession);
-      setIsInitializing(false);
-
-      //TODO: Fetch secondary drive details from googledrive/onedrive api
-      // and update session with latest refresh tokens for secondary drives
-    };
-
-    init();
+  useEffect(() => {
+    setSessionState(initializeSessionFromLocalStorage());
   }, []);
 
   const setPrimaryDrive = useCallback((primaryDrive: Drive) => {
@@ -145,18 +51,23 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
       const newSession: Session = {
         primaryDrive: primaryDrive,
-        secondaryDrives: [],
+        secondaryDrives: [], // Temp set as empty. Gets filled async
       };
-      persistSession(newSession);
+
       return newSession;
     });
   }, []);
 
   const addSecondaryDrive = useCallback((newSecondaryDrive: Drive) => {
     setSessionState((prev) => {
+      if (!prev) return emptySession;
+      if (!prev.primaryDrive) return prev;
+
       if (!newSecondaryDrive) return prev;
+
       if (
         prev.primaryDrive &&
+        prev.primaryDrive.provider === newSecondaryDrive.provider &&
         prev.primaryDrive.email === newSecondaryDrive.email
       ) {
         // cannot add drive as secondary if it is already primary
@@ -181,152 +92,54 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         ...prev,
         secondaryDrives: newSecondaryDrives,
       };
-      persistSession(newSession);
       return newSession;
     });
   }, []);
 
-  const removeDrive = useCallback((drive: Drive) => {
+  const removeSecondaryDrive = useCallback((drive: Drive) => {
     setSessionState((prev) => {
+      if (!prev) return emptySession;
+      if (!prev.primaryDrive) return prev;
+
+      if (!drive) return prev;
+
       if (
-        prev.primaryDrive?.email === drive.email &&
+        prev.primaryDrive &&
+        prev.primaryDrive.email === drive.email &&
         prev.primaryDrive.provider === drive.provider
       ) {
-        localStorage.removeItem("session");
-        sessionStorage.removeItem("session");
-        return emptySession;
-      } else {
-        const newSecondary = prev.secondaryDrives.filter(
-          (d) => d.email !== drive.email || d.provider !== drive.provider,
-        );
-        const newSession = {
-          ...prev,
-          secondaryDrives: newSecondary,
-        };
-        persistSession(newSession);
-        return newSession;
+        // Cannot Remove primary Drive using removeSecondaryDrive()
+        return prev;
       }
+
+      const newSecondaryDrives = prev.secondaryDrives.filter(
+        (sd) => sd.email !== drive.email || sd.provider !== drive.provider,
+      );
+
+      const newSession = {
+        ...prev,
+        secondaryDrives: newSecondaryDrives,
+      };
+      return newSession;
     });
   }, []);
 
   const logout = useCallback(() => {
     setSessionState(emptySession);
-    localStorage.removeItem("session");
-    sessionStorage.removeItem("session");
+    LogoutFromLocalStorage();
   }, []);
-
-  const isExpired = useCallback((drive: Drive | null) => {
-    if (
-      !drive ||
-      !drive.refresh_token ||
-      !drive.access_token ||
-      !drive.expires_in ||
-      !drive.acquired_at
-    )
-      return true;
-
-    const expiryTime = drive.acquired_at + drive.expires_in * 1000;
-    return Date.now() > expiryTime - 5 * 60 * 1000; // 5 minute buffer
-  }, []);
-
-  const populateSessionStorage = useCallback(
-    async (targetDrive: Drive | null) => {
-      const driveToUpdate = targetDrive || session.primaryDrive;
-      if (!driveToUpdate || !driveToUpdate.refresh_token) {
-        return;
-      }
-
-      let newAccessToken = null;
-      let newExpiresIn = null;
-      let newAcquiredAt = null;
-
-      if (driveToUpdate.provider === "google-drive") {
-        try {
-          const data = await driveToUpdate.fetch_access_token?.();
-
-          if (data && data.access_token) {
-            newAccessToken = data.access_token;
-            newExpiresIn = data.expires_in;
-            newAcquiredAt = Date.now();
-          } else {
-            console.error("Failed to refresh token", data);
-            return;
-          }
-        } catch (err) {
-          console.error("Error calling fetchAccessToken", err);
-          return;
-        }
-      }
-
-      if (newAccessToken) {
-        setSessionState((prev) => {
-          let updatedPrimary = prev.primaryDrive;
-          let updatedSecondary = [...prev.secondaryDrives];
-          let didUpdate = false;
-
-          if (
-            updatedPrimary &&
-            updatedPrimary.email === driveToUpdate.email &&
-            updatedPrimary.provider === driveToUpdate.provider
-          ) {
-            updatedPrimary = new Drives[updatedPrimary.provider]({
-              ...updatedPrimary,
-              access_token: newAccessToken,
-              expires_in: newExpiresIn as number,
-              acquired_at: newAcquiredAt as number,
-            });
-            didUpdate = true;
-          }
-
-          const secondaryIndex = updatedSecondary.findIndex(
-            (d) =>
-              d.email === driveToUpdate.email &&
-              d.provider === driveToUpdate.provider,
-          );
-          if (secondaryIndex >= 0) {
-            updatedSecondary[secondaryIndex] = new Drives[
-              updatedSecondary[secondaryIndex].provider
-            ]({
-              ...updatedSecondary[secondaryIndex],
-              access_token: newAccessToken,
-              expires_in: newExpiresIn as number,
-              acquired_at: newAcquiredAt as number,
-            });
-            didUpdate = true;
-          }
-
-          if (didUpdate) {
-            const newSession = {
-              primaryDrive: updatedPrimary,
-              secondaryDrives: updatedSecondary,
-            };
-            // Only update session storage with access tokens!
-            SaveTemporarySession(newSession);
-            return newSession;
-          }
-          return prev;
-        });
-      }
-    },
-    [session.primaryDrive],
-  );
-
-  if (isInitializing) {
-    return null; // Or a loading spinner if preferred
-  }
 
   return (
     <SessionContext.Provider
       value={{
         session,
+        sessionIsInitialised,
+
         setPrimaryDrive,
         addSecondaryDrive,
-        removeDrive,
+        removeSecondaryDrive,
 
         logout,
-        isExpired,
-
-        populateSessionStorage,
       }}
     >
       {children}

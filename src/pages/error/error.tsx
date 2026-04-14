@@ -13,11 +13,12 @@ export default function ErrorPage() {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        backgroundColor: "grey.50",
+        backgroundColor: "background.default",
+        color: "text.primary",
         p: 3,
       }}
     >
-      <Typography variant="h1" component="h1" color="primary" gutterBottom>
+      <Typography variant="h1" component="h1" color="error" gutterBottom>
         {errorStatus || "Oops!"}
       </Typography>
       <Typography variant="h5" component="h2" gutterBottom>

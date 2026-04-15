@@ -2,8 +2,15 @@ import { Drive, DriveDetails, DriveSettings, DriveSpan } from "../Drive";
 import { FetchGoogleAccessToken } from "../../services/google/google-auth";
 import { JSX } from "react";
 
-export interface GoogleDriveSettings extends DriveSettings {}
-export interface GoogleDriveDetails extends DriveDetails {}
+export interface GoogleDriveSettings extends DriveSettings {
+  usage_limit?: number;
+  allowed_space_usage_percent?: number;
+}
+export interface GoogleDriveDetails extends DriveDetails {
+  total_space?: number;
+  used_space?: number;
+  sdrive_usage?: number;
+}
 export interface GoogleDriveSpan extends DriveSpan {}
 
 export class GoogleDrive implements Drive {
@@ -68,10 +75,15 @@ export class GoogleDrive implements Drive {
     this.acquired_at = data.acquired_at || Date.now();
 
     this.drive_settings = data.drive_settings || {
-      allowed_space_usage_percent: 80,
+      usage_limit: 0,
+      allowed_space_usage_percent: 0,
     };
 
-    this.drive_details = data.drive_details || {};
+    this.drive_details = data.drive_details || {
+      total_space: 0,
+      used_space: 0,
+      sdrive_usage: 0,
+    };
 
     this.drive_span = data.drive_span || {};
 

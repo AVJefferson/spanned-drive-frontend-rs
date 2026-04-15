@@ -64,8 +64,8 @@ export default function GoogleWebRedirect(params: any) {
     }
 
     if (
-      params?.provider !== "google-web" &&
-      params.oauthParams.provider !== "google-web"
+      params?.provider !== "google-drive" &&
+      params.oauthParams.provider !== "google-drive"
     ) {
       setErrorNode(<h1>Provider Mismatch. Something has gone wrong!!!</h1>);
       return;

@@ -501,7 +501,7 @@ const SignInPage = () => {
                   variant="outlined"
                   size="large"
                   startIcon={<GoogleIcon />}
-                  onClick={handleGoogleSignIn}
+                  onClick={() => handleGoogleSignIn("primary")}
                   sx={{
                     py: 1.5,
                     borderColor: "grey.300",

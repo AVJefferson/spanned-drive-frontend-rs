@@ -35,6 +35,7 @@ export interface Drive {
   drive_span?: DriveSpan;
 
   fetch_access_token: () => Promise<any>;
+  oauth_redirect: (props: any) => void;
 }
 
 const DriveImplementations: Record<string, any> = import.meta.glob(
@@ -50,7 +51,7 @@ const Drives: { [key: string]: any } = Object.keys(DriveImplementations).reduce(
     if (driveModule && driveModule.default) {
       const driveName = path.split("/").pop()?.replace(".tsx", "");
       if (!driveName) return acc;
-      
+
       acc[driveName] = driveModule.default;
     }
     return acc;

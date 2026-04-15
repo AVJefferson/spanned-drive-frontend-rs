@@ -1,6 +1,9 @@
 import { GOOGLE_OAUTH_REDIRECT_URI } from "./google-constants";
 
-export default function GoogleOauthRedirect() {
+export function GoogleOauthRedirect(
+  state: string = "primary",
+  hint: string = "",
+) {
   let url = `${GOOGLE_OAUTH_REDIRECT_URI}?client_id=${encodeURIComponent(import.meta.env.VITE_GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(import.meta.env.VITE_GOOGLE_REDIRECT_URI)}&response_type=code&prompt=consent&access_type=offline`;
 
   url +=
@@ -11,7 +14,7 @@ export default function GoogleOauthRedirect() {
 
   // Use state to pass a random Nonce for CSRF protection and to maintain any necessary state between the request and callback. The state also helps understand if the login attempt was for primary or secondary
   let nonce = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
-  url += `&state=primary~${nonce}`;
+  url += `&state=${state}~${nonce}`;
 
   // Use PKCE Flow for public facing client application.
   url += "&code_challenge_method=S256";
@@ -37,10 +40,14 @@ export default function GoogleOauthRedirect() {
       .replace(/=+$/, "");
     url += `&code_challenge=${codeChallenge}`;
 
+    if (hint !== "") {
+      url += `&hint=${hint}`;
+    }
+
     localStorage.setItem(
       "oauth_params",
       JSON.stringify({
-        provider: "google-web",
+        provider: "google-drive",
         timestamp: Date.now(),
         nonce: nonce,
         verifier: codeVerifier,
@@ -51,3 +58,5 @@ export default function GoogleOauthRedirect() {
     window.location.href = url;
   });
 }
+
+export default GoogleOauthRedirect;

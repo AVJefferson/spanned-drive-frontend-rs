@@ -1,5 +1,6 @@
 import { Drive, DriveDetails, DriveSettings, DriveSpan } from "../Drive";
 import { FetchGoogleAccessToken } from "../../services/google/google-auth";
+import { GoogleOauthRedirect } from "../../services/google/google-oauth-signin";
 import { JSX } from "react";
 
 export interface GoogleDriveSettings extends DriveSettings {
@@ -66,6 +67,10 @@ export class GoogleDrive implements Drive {
   fetch_access_token = async () => {
     if (!this.refresh_token) return;
     return await FetchGoogleAccessToken(this.refresh_token);
+  };
+
+  oauth_redirect = (props: any) => {
+    GoogleOauthRedirect(props.accountType, props?.hint || "");
   };
 
   constructor(data: Partial<GoogleDrive>) {

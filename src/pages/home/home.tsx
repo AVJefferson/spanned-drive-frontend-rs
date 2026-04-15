@@ -14,6 +14,28 @@ const HomePage = () => {
 
   const [selectedRhsTab, setSelectedRhsTab] = useState(0);
 
+  const [screenSizeType, setScreenSizeType] = useState("desktop");
+
+  useEffect(() => {
+    const handleResize = () => {
+      console.log(screenSizeType);
+
+      if (window.innerWidth <= 768) {
+        setScreenSizeType("mobile");
+      } else {
+        setScreenSizeType("desktop");
+      }
+    };
+
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   if (!session || !session.primaryDrive) {
     // navigate to signing page
     console.log({ session });
@@ -140,6 +162,7 @@ const HomePage = () => {
         </Grid>
 
         {/* Right Pane */}
+        {/* fix the size of RHS to some pixels, minWidth: "350px", maxWidth: "400px" */}
         <Grid
           size={{ xs: 12, sm: 2 }}
           sx={{ display: { xs: "none", sm: "flex" }, flexDirection: "column" }}

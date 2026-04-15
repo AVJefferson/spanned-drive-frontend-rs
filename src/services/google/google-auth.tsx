@@ -2,7 +2,7 @@ const backendUrl = import.meta.env.VITE_SDRIVE_BACKEND_URL;
 const authHeader = `Bearer ${import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN}`
 
 export function FetchGoogleAccessToken(refresh_token: string): Promise<any> {
-  const url = `${backendUrl}/token/google-web/access_token`;
+  const url = `${backendUrl}/token/google-drive/access_token`;
   return fetch(url, {
     method: "POST",
     headers: {
@@ -24,7 +24,7 @@ export function FetchGoogleWebAccessTokenAndRefreshToken(
   code: string,
   codeVerifier: string,
 ): Promise<any> {
-  const url = `${backendUrl}/token/google-web/refresh_token`;
+  const url = `${backendUrl}/token/google-drive/refresh_token`;
   return fetch(url, {
     method: "POST",
     headers: {

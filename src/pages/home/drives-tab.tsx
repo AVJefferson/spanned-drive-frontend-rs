@@ -1,15 +1,36 @@
-import { Box, Accordion, Typography, Button, Grid, LinearProgress } from "@mui/material";
+import {
+  Box,
+  Accordion,
+  Typography,
+  Button,
+  Grid,
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemAvatar,
+  ListItemText,
+  Avatar,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import { LogoutFromLocalStorage } from "../../services/browser/logout";
-import { Drive } from "../../contexts/Drive";
+import { Drive, Drives } from "../../contexts/Drive";
+import GoogleOauthRedirect from "../../services/google/google-oauth-signin";
 
 function DriveCard(drive: Drive) {
   return <></>;
 }
 
 function OnBtnClickLogout() {
+  // TODO, Make nicer UI
+  if (!window.confirm("Are you sure you want to log out?")) {
+    return;
+  }
+
   const Navigate = useNavigate();
   LogoutFromLocalStorage();
   Navigate("/signin");
@@ -17,28 +38,41 @@ function OnBtnClickLogout() {
 
 function LogoutIcon() {
   return (
+    // logout icon
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.5"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ color: "#fff" }}
     >
-      <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-      <line x1="12" y1="2" x2="12" y2="12"></line>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+      <polyline points="16 17 21 12 16 7"></polyline>
+      <line x1="21" y1="12" x2="9" y2="12"></line>
     </svg>
   );
 }
 
 export default function DrivesTab(props: any) {
   const [expandedDrives, setExpandedDrives] = useState<string[]>([]);
+  const [isDialogNewSecondaryDriveOpen, setIsDialogNewSecondaryDriveOpen] =
+    useState(false);
 
   const { primaryDrive, secondaryDrives } = props;
+
+  function handleListItemClickForNewSecondaryDrive(provider: string) {
+    setIsDialogNewSecondaryDriveOpen(false);
+    console.log(provider, Drives[provider], Drives[provider].oauthRedirect);
+    if (!provider) return;
+    else
+      Drives[provider]?.oauth_redirect({
+        accountType: "secondary",
+      });
+  }
 
   return (
     <div>
@@ -91,51 +125,33 @@ export default function DrivesTab(props: any) {
           </Typography>
 
           {/* Primary drive Usage Details */}
-          {/* it should be 4 numbers 2 rows 2 columns, used storage / total storage  and sdrive usage / sdrive limit*/}
+          {/* it should be 4 numbers 1 rows 4 columns, total, limit, used, remaining*/}
           {/* do not use grid and make the text small + add colors */}
-          <Box
-            sx={{
-              display: "flex",
-              flexWrap: "wrap",
-              mt: 1.5,
-              gap: 1,
-              justifyContent: "space-between",
-            }}
-          >
-            <Box sx={{ flex: "1 1 40%" }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                display="block"
-                sx={{ fontSize: "0.65rem" }}
-              >
-                Total Usage
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: "medium", color: "primary.main" }}
-              >
-                {primaryDrive.drive_details?.used_space || 0}GB /{" "}
-                {primaryDrive.drive_details?.total_space || 0}GB
-              </Typography>
-            </Box>
-            <Box sx={{ flex: "1 1 40%" }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                display="block"
-                sx={{ fontSize: "0.65rem" }}
-              >
-                SDrive Usage
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{ fontWeight: "medium", color: "secondary.main" }}
-              >
-                {primaryDrive.drive_details?.sdrive_usage || 0}GB /{" "}
-                {primaryDrive.drive_settings?.usage_limit || 0}GB
-              </Typography>
-            </Box>
+
+          <Box sx={{ mt: 2 }}>
+            <LinearProgress
+              variant="determinate"
+              value={
+                (parseFloat(primaryDrive.sdrive_used_space) /
+                  parseFloat(primaryDrive.sdrive_limit)) *
+                  100 || 20
+              }
+              valueBuffer={50}
+              aria-label="5gb"
+              sx={{ height: 6, borderRadius: 3, mb: 1 }}
+              title={"Used 3gb / Total 5gb"}
+            />
+            <LinearProgress
+              variant="determinate"
+              value={
+                (parseFloat(primaryDrive.sdrive_used_space) /
+                  parseFloat(primaryDrive.sdrive_limit)) *
+                  100 || 20
+              }
+              valueBuffer={50}
+              aria-label="5gb"
+              sx={{ height: 6, borderRadius: 3, mb: 1 }}
+            />
           </Box>
         </Box>
       </Box>
@@ -157,9 +173,36 @@ export default function DrivesTab(props: any) {
           position: "relative",
         }}
       />
-      <Button variant="outlined" fullWidth sx={{ mt: 2 }}>
+      <Button
+        variant="outlined"
+        fullWidth
+        sx={{ mt: 2 }}
+        onClick={() => setIsDialogNewSecondaryDriveOpen(true)}
+      >
         Add Drive
       </Button>
+      <Dialog open={isDialogNewSecondaryDriveOpen}>
+        <DialogTitle>Select Provider</DialogTitle>
+        <List sx={{ pt: 0 }}>
+          {Object.keys(Drives).map((p: string) => {
+            let name = p.split("/").pop()?.replace(".tsx", "") || p;
+            name = name
+              .split("-")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+
+            return (
+              <ListItem disablePadding key={name}>
+                <ListItemButton
+                  onClick={() => handleListItemClickForNewSecondaryDrive(p)}
+                >
+                  <ListItemText primary={name} />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Dialog>
     </div>
   );
 }

@@ -313,7 +313,7 @@ export default function DrivesTab(props: any) {
       <Button
         variant="outlined"
         fullWidth
-        sx={{ mt: 2, my: 0.2 }}
+        sx={{ mt: 2, my: 1 }}
         onClick={() => setIsDialogNewSecondaryDriveOpen(true)}
       >
         Add Drive

@@ -69,7 +69,7 @@ export class GoogleDrive implements Drive {
     return await FetchGoogleAccessToken(this.refresh_token);
   };
 
-  oauth_redirect = (props: any) => {
+  static oauth_redirect = (props: any) => {
     GoogleOauthRedirect(props.accountType, props?.hint || "");
   };
 

@@ -14,28 +14,6 @@ const HomePage = () => {
 
   const [selectedRhsTab, setSelectedRhsTab] = useState(0);
 
-  const [screenSizeType, setScreenSizeType] = useState("desktop");
-
-  useEffect(() => {
-    const handleResize = () => {
-      console.log(screenSizeType);
-
-      if (window.innerWidth <= 768) {
-        setScreenSizeType("mobile");
-      } else {
-        setScreenSizeType("desktop");
-      }
-    };
-
-    handleResize();
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
   if (!session || !session.primaryDrive) {
     // navigate to signing page
     console.log({ session });
@@ -191,7 +169,13 @@ const HomePage = () => {
               {...a11yProps(2)}
             />
           </Tabs>
-          <Box sx={{ flexGrow: 1, overflowY: "auto" }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              overflowY: "auto",
+              maxHeight: "calc(100vh - 48px)",
+            }}
+          >
             <TabPanel value={selectedRhsTab} index={0}>
               <DrivesTab
                 primaryDrive={session.primaryDrive}

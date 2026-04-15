@@ -35,8 +35,11 @@ export interface Drive {
   drive_span?: DriveSpan;
 
   fetch_access_token: () => Promise<any>;
-  oauth_redirect: (props: any) => void;
 }
+
+export type DriveConstructor = (new (data: any) => Drive) & {
+  oauth_redirect: (props: any) => void;
+};
 
 const DriveImplementations: Record<string, any> = import.meta.glob(
   "./drives/*.tsx",

@@ -19,10 +19,84 @@ import { useEffect, useState } from "react";
 
 import { LogoutFromLocalStorage } from "../../services/browser/logout";
 import { Drive, Drives } from "../../contexts/Drive";
-import GoogleOauthRedirect from "../../services/google/google-oauth-signin";
 
 function DriveCard(drive: Drive) {
-  return <></>;
+  // return an accordion that has Googleicon and email-id in it. When user clicks on it, it should accordion, basically open up into more details+settings
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={() => setExpanded(!expanded)}
+      sx={{
+        mb: 1,
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: "8px !important",
+        "&:before": { display: "none" },
+        boxShadow: "none",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          p: 1.5,
+          cursor: "pointer",
+        }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        {drive.provider_icon()}
+        <Typography
+          variant="body2"
+          sx={{ ml: 1, fontWeight: "medium", flexGrow: 1 }}
+          noWrap
+        >
+          {drive.email.split("@")[0]}
+        </Typography>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.2s",
+          }}
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </Box>
+      <Box sx={{ px: 2, pb: 2, display: expanded ? "block" : "none" }}>
+        <Box sx={{ mt: 1.5, my: 0.1 }}>
+          <Typography variant="caption" sx={{ mb: 0.5, display: "block" }}>
+            Storage Usage
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={
+              (parseFloat(drive?.drive_details?.used_space) /
+                parseFloat(drive?.drive_details?.total_space)) *
+                100 || 0
+            }
+            sx={{ height: 6, borderRadius: 3 }}
+          />
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              mt: 0.5,
+            }}
+          ></Box>
+        </Box>
+      </Box>
+    </Accordion>
+  );
 }
 
 function OnBtnClickLogout() {
@@ -72,6 +146,67 @@ export default function DrivesTab(props: any) {
       Drives[provider]?.oauth_redirect({
         accountType: "secondary",
       });
+  }
+
+  function AddDrivesDialog() {
+    return (
+      <Dialog open={isDialogNewSecondaryDriveOpen}>
+        <DialogTitle>Select Provider</DialogTitle>
+        <List sx={{ pt: 0 }}>
+          {Object.keys(Drives).map((p: string) => {
+            let name = p.split("/").pop()?.replace(".tsx", "") || p;
+            name = name
+              .split("-")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+
+            return (
+              <ListItem disablePadding key={name}>
+                <ListItemButton
+                  onClick={() => handleListItemClickForNewSecondaryDrive(p)}
+                >
+                  <ListItemAvatar>
+                    <Avatar sx={{ bgcolor: "", color: "white" }}>
+                      {/* {Drives[p].provider_icon() || null} */}
+                    </Avatar>
+                  </ListItemAvatar>
+
+                  <ListItemText primary={name} />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+          <ListItem disablePadding>
+            {/* make this one red */}
+
+            <ListItemButton
+              onClick={() => setIsDialogNewSecondaryDriveOpen(false)}
+            >
+              <ListItemAvatar>
+                <Avatar sx={{ bgcolor: "error.main" }}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </Avatar>
+              </ListItemAvatar>
+
+              <ListItemText primary="Cancel" />
+            </ListItemButton>
+          </ListItem>
+        </List>
+      </Dialog>
+    );
   }
 
   return (
@@ -124,10 +259,6 @@ export default function DrivesTab(props: any) {
             {primaryDrive.email.split("@")[0] || "Unknown"}
           </Typography>
 
-          {/* Primary drive Usage Details */}
-          {/* it should be 4 numbers 1 rows 4 columns, total, limit, used, remaining*/}
-          {/* do not use grid and make the text small + add colors */}
-
           <Box sx={{ mt: 2 }}>
             <LinearProgress
               variant="determinate"
@@ -164,7 +295,7 @@ export default function DrivesTab(props: any) {
         }}
       />
       {/* Total available space adding up sdrive limits of all drives*/}
-      Some Numbers
+      Combined Stats
       <Box
         sx={{
           height: "1px",
@@ -173,36 +304,21 @@ export default function DrivesTab(props: any) {
           position: "relative",
         }}
       />
+      {/* Secondary Drive Cards */}
+      <Box sx={{ mt: 2 }}>
+        {secondaryDrives.map((drive: Drive, index: number) => (
+          <DriveCard key={index} {...drive} />
+        ))}
+      </Box>
       <Button
         variant="outlined"
         fullWidth
-        sx={{ mt: 2 }}
+        sx={{ mt: 2, my: 0.2 }}
         onClick={() => setIsDialogNewSecondaryDriveOpen(true)}
       >
         Add Drive
       </Button>
-      <Dialog open={isDialogNewSecondaryDriveOpen}>
-        <DialogTitle>Select Provider</DialogTitle>
-        <List sx={{ pt: 0 }}>
-          {Object.keys(Drives).map((p: string) => {
-            let name = p.split("/").pop()?.replace(".tsx", "") || p;
-            name = name
-              .split("-")
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ");
-
-            return (
-              <ListItem disablePadding key={name}>
-                <ListItemButton
-                  onClick={() => handleListItemClickForNewSecondaryDrive(p)}
-                >
-                  <ListItemText primary={name} />
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
-      </Dialog>
+      <AddDrivesDialog />
     </div>
   );
 }

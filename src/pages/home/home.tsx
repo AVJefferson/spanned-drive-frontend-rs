@@ -241,7 +241,7 @@ const HomePage = () => {
     );
 
   const explorerPanel = (
-    <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 } }}>
+    <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 },}}>
       {!isReady ? (
         <Typography color="text.secondary">Loading your logical folders...</Typography>
       ) : (
@@ -352,7 +352,7 @@ const HomePage = () => {
         </MenuItem>
       </Menu>
 
-      <Box sx={{ flex: 1, minHeight: 0, px: { xs: 0, md: 3 }, pb: isMobile ? 10 : 3 }}>
+      <Box sx={{ flex: 1,  minHeight: 0, px: { xs: 0, md: 3 }, pb: isMobile ? 10 : 3 }}>
         {isMobile ? (
           <Box sx={{ height: "100%" }}>
             {selectedMobileTab === "folders" ? explorerPanel : null}
@@ -377,9 +377,9 @@ const HomePage = () => {
             ) : null}
           </Box>
         ) : (
-          <Stack direction="row" spacing={2} sx={{ height: "100%" }}>
+          <Stack direction="row" spacing={2}>
             {explorerPanel}
-            <Paper sx={{ width: 380, minWidth: 380, display: "flex", flexDirection: "column" }}>
+            <Paper sx={{ width: 380, minWidth: 380, display: "flex", flexDirection: "column", height: "calc(100vh - 125px)"}}>
               <Tabs value={selectedDesktopTab} onChange={(_, value) => setSelectedDesktopTab(value)} variant="fullWidth">
                 <Tab label={DrivesTabIcon()} />
                 <Tab label={InfoTabIcon()} />

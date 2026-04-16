@@ -1,210 +1,468 @@
-import { useEffect, useState } from "react";
-import { Box, Grid, Paper, Typography, Tab, Tabs, Button } from "@mui/material";
+import {
+  BottomNavigation,
+  BottomNavigationAction,
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  Menu,
+  MenuItem,
+  Paper,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
+import { useLogicalFolders } from "../../contexts/LogicalFolders";
+import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
 import { useSession } from "../../contexts/SessionContext";
+import { useTasks } from "../../contexts/TasksContext";
 
+import { CreateLogicalFolderDialog, DestinationDialog } from "./home-dialogs";
+import { HomeExplorer } from "./home-explorer";
 import { InfoTab, SettingsTab, DrivesTab, TasksTab } from "./right-pane-tabs";
 
+function FolderTabIcon() {
+  return "▣";
+}
+
+function DrivesTabIcon() {
+  return "◫";
+}
+
+function TasksTabIcon() {
+  return "✓";
+}
+
+function SettingsTabIcon() {
+  return "◌";
+}
+
+function InfoTabIcon() {
+  return "i";
+}
+
 const HomePage = () => {
-  const { session } = useSession();
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const { session, setDriveUsageLimit, refreshAllDriveDetails } = useSession();
+  const { logicalFolders, isReady, createLogicalFolder, getLogicalFolder } =
+    useLogicalFolders();
+  const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove } = useTasks();
 
-  const [logicalFolders, setLogicalFolders] = useState([]);
-  const [selectedLogicalDirPath, setSelectedLogicalDirPath] = useState(null);
-  const [selectedLogicalFile, setSelectedLogicalFile] = useState(null);
+  const [selectedLogicalFolderId, setSelectedLogicalFolderId] = useState<string | null>(
+    null,
+  );
+  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [selectedDesktopTab, setSelectedDesktopTab] = useState(0);
+  const [selectedMobileTab, setSelectedMobileTab] = useState("folders");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [selectedDriveKeys, setSelectedDriveKeys] = useState<string[]>([]);
+  const [createError, setCreateError] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [uploadAnchorEl, setUploadAnchorEl] = useState<HTMLElement | null>(null);
+  const [copyMoveMode, setCopyMoveMode] = useState<"copy" | "move" | null>(null);
+  const [destinationParentId, setDestinationParentId] = useState<string | null>(null);
+  const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
 
-  const [selectedRhsTab, setSelectedRhsTab] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
-  if (!session || !session.primaryDrive) {
-    // navigate to signing page
-    console.log({ session });
-    window.location.href = "/signin";
+  useEffect(() => {
+    folderInputRef.current?.setAttribute("webkitdirectory", "");
+    folderInputRef.current?.setAttribute("directory", "");
+  }, []);
+
+  useEffect(() => {
+    if (!session.primaryDrive) {
+      navigate("/signin");
+    }
+  }, [navigate, session.primaryDrive]);
+
+  useEffect(() => {
+    if (session.primaryDrive) {
+      void refreshAllDriveDetails();
+    }
+  }, [refreshAllDriveDetails, session.primaryDrive]);
+
+  const activeLogicalFolder = selectedLogicalFolderId
+    ? getLogicalFolder(selectedLogicalFolderId)
+    : undefined;
+  const selectedEntry = activeLogicalFolder?.items.find(
+    (entry) => entry.id === selectedEntryId,
+  );
+
+  const allAvailableDrives = useMemo(
+    () => [
+      ...(session.primaryDrive ? [session.primaryDrive] : []),
+      ...session.secondaryDrives,
+    ],
+    [session.primaryDrive, session.secondaryDrives],
+  );
+
+  const breadcrumbs = useMemo(() => {
+    if (!activeLogicalFolder || !currentParentId) {
+      return [];
+    }
+
+    const items: LogicalEntry[] = [];
+    let pointer = activeLogicalFolder.items.find((entry) => entry.id === currentParentId);
+    while (pointer) {
+      items.unshift(pointer);
+      pointer = pointer.parentId
+        ? activeLogicalFolder.items.find((entry) => entry.id === pointer?.parentId)
+        : undefined;
+    }
+
+    return items;
+  }, [activeLogicalFolder, currentParentId]);
+
+  const destinationOptions = useMemo(
+    () => [
+      {
+        id: null,
+        label: activeLogicalFolder ? `${activeLogicalFolder.name} /` : "Root",
+      },
+      ...(activeLogicalFolder?.items
+        .filter((entry) => entry.kind === "folder" && entry.id !== selectedEntryId)
+        .map((entry) => ({
+          id: entry.id,
+          label: entry.name,
+        })) || []),
+    ],
+    [activeLogicalFolder, selectedEntryId],
+  );
+
+  if (!session.primaryDrive) {
     return null;
   }
 
-  interface TabPanelProps {
-    children?: React.ReactNode;
-    index: number;
-    value: number;
-  }
-
-  function TabPanel(props: TabPanelProps) {
-    const { children, value, index, ...other } = props;
-
-    return (
-      <div
-        role="tabpanel"
-        hidden={value !== index}
-        id={`vertical-tabpanel-${index}`}
-        aria-labelledby={`vertical-tab-${index}`}
-        {...other}
-      >
-        {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-      </div>
-    );
-  }
-
-  function a11yProps(index: number) {
-    return {
-      id: `vertical-tab-${index}`,
-      "aria-controls": `vertical-tabpanel-${index}`,
-    };
-  }
-
-  const handleRhsTabChange = (
-    _event: React.SyntheticEvent,
-    newValue: number,
-  ) => {
-    setSelectedRhsTab(newValue);
+  const resetSelection = () => {
+    setSelectedEntryId(null);
+    setMobileInfoOpen(false);
   };
 
-  function InfoIcon() {
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="16" x2="12" y2="12"></line>
-        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-      </svg>
-    );
-  }
+  const openLogicalFolder = (logicalFolderId: string) => {
+    setSelectedLogicalFolderId(logicalFolderId);
+    setCurrentParentId(null);
+    resetSelection();
+  };
 
-  function DrivesIcon() {
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-        <line x1="6" y1="6" x2="6.01" y2="6"></line>
-        <line x1="6" y1="18" x2="6.01" y2="18"></line>
-      </svg>
-    );
-  }
+  const openEntry = (entry: LogicalEntry) => {
+    if (entry.kind === "folder") {
+      setCurrentParentId(entry.id);
+      resetSelection();
+      return;
+    }
 
-  function TasksIcon() {
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="9 11 12 14 22 4"></polyline>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-      </svg>
+    setSelectedEntryId(entry.id);
+    setSelectedDesktopTab(1);
+    if (isMobile) {
+      setMobileInfoOpen(true);
+    }
+  };
+
+  const openInfo = (entry: LogicalEntry) => {
+    setSelectedEntryId(entry.id);
+    setSelectedDesktopTab(1);
+    if (isMobile) {
+      setMobileInfoOpen(true);
+    }
+  };
+
+  const handleCreateLogicalFolder = async () => {
+    const drives = allAvailableDrives.filter((drive) =>
+      selectedDriveKeys.includes(`${drive.provider}:${drive.email}`.toLowerCase()),
     );
-  }
+
+    if (!createName.trim()) {
+      setCreateError("A logical folder name is required.");
+      return;
+    }
+
+    if (drives.length === 0) {
+      setCreateError("Select at least one backend drive.");
+      return;
+    }
+
+    setIsCreatingFolder(true);
+    setCreateError("");
+    try {
+      const folder = await createLogicalFolder(createName.trim(), drives);
+      openLogicalFolder(folder.id);
+      setCreateDialogOpen(false);
+    } catch (error) {
+      setCreateError(
+        error instanceof Error ? error.message : "Unable to create logical folder.",
+      );
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  };
+
+  const enqueueSelectedUpload = (files: File[]) => {
+    if (!activeLogicalFolder || files.length === 0) {
+      return;
+    }
+
+    enqueueUpload(activeLogicalFolder.id, currentParentId, files);
+  };
+
+  const detailsPanel =
+    selectedEntry && activeLogicalFolder ? (
+      <InfoTab
+        selectedEntry={selectedEntry}
+        logicalFolder={activeLogicalFolder}
+        onDelete={() => {
+          if (window.confirm(`Delete ${selectedEntry.name}?`)) {
+            enqueueDelete(activeLogicalFolder.id, selectedEntry.id);
+            resetSelection();
+          }
+        }}
+        onCopy={() => {
+          setCopyMoveMode("copy");
+          setDestinationParentId(currentParentId);
+        }}
+        onMove={() => {
+          setCopyMoveMode("move");
+          setDestinationParentId(currentParentId);
+        }}
+      />
+    ) : (
+      <SettingsTab />
+    );
+
+  const explorerPanel = (
+    <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 } }}>
+      {!isReady ? (
+        <Typography color="text.secondary">Loading your logical folders...</Typography>
+      ) : (
+        <HomeExplorer
+          logicalFolders={logicalFolders}
+          activeLogicalFolder={activeLogicalFolder}
+          currentParentId={currentParentId}
+          selectedEntryId={selectedEntryId}
+          breadcrumbs={breadcrumbs}
+          onOpenLogicalFolder={openLogicalFolder}
+          onBackToRoot={() => {
+            setSelectedLogicalFolderId(null);
+            setCurrentParentId(null);
+            resetSelection();
+          }}
+          onNavigateToFolder={(entryId) => {
+            setCurrentParentId(entryId);
+            resetSelection();
+          }}
+          onOpenEntry={openEntry}
+          onOpenInfo={openInfo}
+          onCreateLogicalFolder={() => {
+            setCreateName("");
+            setSelectedDriveKeys([]);
+            setCreateError("");
+            setCreateDialogOpen(true);
+          }}
+        />
+      )}
+    </Paper>
+  );
 
   return (
-    <Box
-      sx={{
-        flexGrow: 1,
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* Top Section: Left, Middle, and Right Panes */}
-      <Grid container spacing={1} sx={{ flex: 1, overflow: "hidden" }}>
-        {/* Middle Content */}
-        <Grid size={{ xs: 12, sm: 10 }}>
-          <Paper sx={{ height: "100%", p: 2, overflowY: "auto" }}>
-            <Typography variant="h4">Main Content Area</Typography>
-            <Typography sx={{ mt: 2 }}>
-              Your primary application content goes here. This area is set to
-              scroll independently if the content exceeds the height.
-            </Typography>
-          </Paper>
-        </Grid>
+    <Box sx={{ minHeight: "100dvh", display: "flex", flexDirection: "column", backgroundColor: "background.default" }}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ px: { xs: 2, md: 3 }, py: 2 }}
+      >
+        <Box>
+          <Typography variant="overline" color="text.secondary">
+            Spanned Drive
+          </Typography>
+          <Typography variant="h5">Unified cloud storage</Typography>
+        </Box>
+        {selectedMobileTab === "folders" || !isMobile ? (
+          <Button
+            variant="contained"
+            onClick={(event) => {
+              if (!selectedLogicalFolderId) {
+                setCreateName("");
+                setSelectedDriveKeys([]);
+                setCreateError("");
+                setCreateDialogOpen(true);
+                return;
+              }
 
-        {/* Right Pane */}
-        {/* fix the size of RHS to some pixels, minWidth: "350px", maxWidth: "400px" */}
-        <Grid
-          size={{ xs: 12, sm: 2 }}
-          sx={{ display: { xs: "none", sm: "flex" }, flexDirection: "column" }}
-        >
-          <Tabs
-            orientation="horizontal"
-            variant="fullWidth"
-            value={selectedRhsTab}
-            onChange={handleRhsTabChange}
-            aria-label="Right pane tabs"
-            sx={{ minHeight: 48, borderBottom: 1, borderColor: "divider" }}
-          >
-            <Tab
-              icon={DrivesIcon()}
-              sx={{ minHeight: 48, minWidth: 0, p: 1 }}
-              {...a11yProps(0)}
-            />
-            <Tab
-              icon={InfoIcon()}
-              sx={{ minHeight: 48, minWidth: 0, p: 1 }}
-              {...a11yProps(1)}
-            />
-            <Tab
-              icon={TasksIcon()}
-              sx={{ minHeight: 48, minWidth: 0, p: 1 }}
-              {...a11yProps(2)}
-            />
-          </Tabs>
-          <Box
-            sx={{
-              flexGrow: 1,
-              overflowY: "auto",
-              maxHeight: "calc(100vh - 48px)",
+              setUploadAnchorEl(event.currentTarget);
             }}
           >
-            <TabPanel value={selectedRhsTab} index={0}>
-              <DrivesTab
-                primaryDrive={session.primaryDrive}
-                secondaryDrives={session.secondaryDrives}
-              />
-            </TabPanel>
-            <TabPanel value={selectedRhsTab} index={1}>
-              {selectedLogicalDirPath ? <InfoTab /> : <SettingsTab />}
-            </TabPanel>
-            <TabPanel value={selectedRhsTab} index={2}>
-              <TasksTab />
-            </TabPanel>
-          </Box>
-        </Grid>
-      </Grid>
+            + {selectedLogicalFolderId ? "Upload" : "New logical folder"}
+          </Button>
+        ) : null}
+      </Stack>
 
-      {/* Bottom Pane */}
-      <Box sx={{ mt: 1, display: { xs: "block", sm: "none" } }}>
-        <Paper
-          sx={{
-            p: 2,
-            bgcolor: "primary.main",
-            color: "white",
-            textAlign: "center",
+      <input
+        ref={fileInputRef}
+        type="file"
+        hidden
+        multiple
+        onChange={(event) => {
+          enqueueSelectedUpload(Array.from(event.target.files || []));
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={folderInputRef}
+        type="file"
+        hidden
+        multiple
+        onChange={(event) => {
+          enqueueSelectedUpload(Array.from(event.target.files || []));
+          event.target.value = "";
+        }}
+      />
+
+      <Menu
+        anchorEl={uploadAnchorEl}
+        open={Boolean(uploadAnchorEl)}
+        onClose={() => setUploadAnchorEl(null)}
+      >
+        <MenuItem
+          onClick={() => {
+            setUploadAnchorEl(null);
+            fileInputRef.current?.click();
           }}
         >
-          <Typography variant="h6">Bottom Pane / Footer</Typography>
-        </Paper>
+          Upload files
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setUploadAnchorEl(null);
+            folderInputRef.current?.click();
+          }}
+        >
+          Upload folder
+        </MenuItem>
+      </Menu>
+
+      <Box sx={{ flex: 1, minHeight: 0, px: { xs: 0, md: 3 }, pb: isMobile ? 10 : 3 }}>
+        {isMobile ? (
+          <Box sx={{ height: "100%" }}>
+            {selectedMobileTab === "folders" ? explorerPanel : null}
+            {selectedMobileTab === "drives" ? (
+              <Paper sx={{ p: 2.5 }}>
+                <DrivesTab
+                  primaryDrive={session.primaryDrive}
+                  secondaryDrives={session.secondaryDrives}
+                  onChangeUsageLimit={setDriveUsageLimit}
+                />
+              </Paper>
+            ) : null}
+            {selectedMobileTab === "tasks" ? (
+              <Paper sx={{ p: 2.5 }}>
+                <TasksTab />
+              </Paper>
+            ) : null}
+            {selectedMobileTab === "settings" ? (
+              <Paper sx={{ p: 2.5 }}>
+                <SettingsTab />
+              </Paper>
+            ) : null}
+          </Box>
+        ) : (
+          <Stack direction="row" spacing={2} sx={{ height: "100%" }}>
+            {explorerPanel}
+            <Paper sx={{ width: 380, minWidth: 380, display: "flex", flexDirection: "column" }}>
+              <Tabs value={selectedDesktopTab} onChange={(_, value) => setSelectedDesktopTab(value)} variant="fullWidth">
+                <Tab label={DrivesTabIcon()} />
+                <Tab label={InfoTabIcon()} />
+                <Tab label={TasksTabIcon()} />
+              </Tabs>
+              <Box sx={{ flex: 1, overflow: "auto", p: 2.5 }}>
+                {selectedDesktopTab === 0 ? (
+                  <DrivesTab
+                    primaryDrive={session.primaryDrive}
+                    secondaryDrives={session.secondaryDrives}
+                    onChangeUsageLimit={setDriveUsageLimit}
+                  />
+                ) : null}
+                {selectedDesktopTab === 1 ? detailsPanel : null}
+                {selectedDesktopTab === 2 ? <TasksTab /> : null}
+              </Box>
+            </Paper>
+          </Stack>
+        )}
       </Box>
+
+      <CreateLogicalFolderDialog
+        open={createDialogOpen}
+        drives={allAvailableDrives}
+        selectedDriveKeys={selectedDriveKeys}
+        name={createName}
+        error={createError}
+        creating={isCreatingFolder}
+        onClose={() => setCreateDialogOpen(false)}
+        onNameChange={setCreateName}
+        onToggleDrive={(driveKey) =>
+          setSelectedDriveKeys((current) =>
+            current.includes(driveKey)
+              ? current.filter((item) => item !== driveKey)
+              : [...current, driveKey],
+          )
+        }
+        onCreate={handleCreateLogicalFolder}
+      />
+
+      <DestinationDialog
+        open={Boolean(copyMoveMode && selectedEntry)}
+        mode={copyMoveMode}
+        options={destinationOptions}
+        selectedDestinationId={destinationParentId}
+        onClose={() => setCopyMoveMode(null)}
+        onSelect={setDestinationParentId}
+        onConfirm={() => {
+          if (!activeLogicalFolder || !selectedEntry || !copyMoveMode) {
+            return;
+          }
+
+          if (copyMoveMode === "copy") {
+            enqueueCopy(activeLogicalFolder.id, selectedEntry.id, destinationParentId);
+          } else {
+            enqueueMove(activeLogicalFolder.id, selectedEntry.id, destinationParentId);
+          }
+
+          setCopyMoveMode(null);
+          resetSelection();
+        }}
+      />
+
+      <Dialog
+        open={mobileInfoOpen && Boolean(selectedEntry && activeLogicalFolder)}
+        onClose={() => setMobileInfoOpen(false)}
+        fullWidth
+      >
+        <DialogContent>
+          {selectedEntry && activeLogicalFolder ? detailsPanel : null}
+        </DialogContent>
+      </Dialog>
+
+      {isMobile ? (
+        <Paper elevation={8} sx={{ position: "fixed", left: 12, right: 12, bottom: 12, borderRadius: 999, overflow: "hidden" }}>
+          <BottomNavigation value={selectedMobileTab} onChange={(_, value) => setSelectedMobileTab(value)} showLabels>
+            <BottomNavigationAction label="Folders" value="folders" icon={<span>{FolderTabIcon()}</span>} />
+            <BottomNavigationAction label="Drives" value="drives" icon={<span>{DrivesTabIcon()}</span>} />
+            <BottomNavigationAction label="Tasks" value="tasks" icon={<span>{TasksTabIcon()}</span>} />
+            <BottomNavigationAction label="Settings" value="settings" icon={<span>{SettingsTabIcon()}</span>} />
+          </BottomNavigation>
+        </Paper>
+      ) : null}
     </Box>
   );
 };

@@ -1,20 +1,22 @@
-import { Drives } from "../../contexts/Drive";
+import { getDriveImplementation } from "../../contexts/Drive";
+import { readDriveSnapshot } from "./storage";
 
 export function RetreiveDrive(provider: string, email: string = "") {
-  if (!provider) return null;
+  if (!provider || !email) {
+    return null;
+  }
 
-  let driveString = localStorage.getItem(`drive-${provider}-${email}`);
-  if (!driveString) return null;
+  const DriveImplementation = getDriveImplementation(provider);
+  const drive = readDriveSnapshot(provider, email);
+
+  if (!DriveImplementation || !drive) {
+    return null;
+  }
 
   try {
-    let drive = JSON.parse(driveString);
-
-    let driveObject = new Drives[provider](drive);
-
-    if (!driveObject) return null;
-
-    return driveObject;
-  } catch {
+    return new DriveImplementation(drive);
+  } catch (error) {
+    console.warn(`Unable to hydrate drive ${provider}:${email}`, error);
     return null;
   }
 }

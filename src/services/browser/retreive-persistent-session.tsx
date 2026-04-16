@@ -1,41 +1,37 @@
-import { Session, emptySession } from "../../contexts/Session.tsx";
-import { Drive, Drives } from "../../contexts/Drive.tsx";
-import { RetreiveDrive } from "./retreive-drive.tsx";
+import type { Session } from "../../contexts/Session";
+import { emptySession } from "../../contexts/Session";
+import { RetreiveDrive } from "./retreive-drive";
+import { STORAGE_KEYS, readLocalStorageJson } from "./storage";
 
 export function RetreivePersistentSession(): Session {
-  const localDataSessionStr = localStorage.getItem("session");
+  const persisted = readLocalStorageJson<{
+    primaryDrive?: { provider?: string; email?: string } | null;
+    secondaryDrives?: { provider?: string; email?: string }[];
+  }>(STORAGE_KEYS.session, readLocalStorageJson("session", {}));
 
-  if (localDataSessionStr) {
-    try {
-      const localDataSession = JSON.parse(localDataSessionStr);
-      if (!localDataSession.primaryDrive) return emptySession;
-
-      let primaryDrive: Drive = RetreiveDrive(
-        localDataSession.primaryDrive.provider,
-        localDataSession.primaryDrive.email,
-      );
-      if (!primaryDrive) return emptySession;
-
-      let secondaryDrives = [];
-      if (localDataSession.secondaryDrives)
-        secondaryDrives = localDataSession.secondaryDrives.map((sd: any) => {
-          let drive = RetreiveDrive(sd.provider, sd.email);
-          if (drive) return drive;
-
-          return new Drives[sd.provider]({
-            email: sd.email,
-          });
-        });
-
-      return {
-        primaryDrive,
-        secondaryDrives,
-      };
-    } catch (e) {
-      console.error("Failed to parse session from localStorage:", e);
-      return emptySession;
-    }
+  if (!persisted?.primaryDrive?.provider || !persisted.primaryDrive.email) {
+    return emptySession;
   }
 
-  return emptySession;
+  const primaryDrive = RetreiveDrive(
+    persisted.primaryDrive.provider,
+    persisted.primaryDrive.email,
+  );
+
+  if (!primaryDrive) {
+    return emptySession;
+  }
+
+  const secondaryDrives = (persisted.secondaryDrives || [])
+    .map((drive) =>
+      drive.provider && drive.email
+        ? RetreiveDrive(drive.provider, drive.email)
+        : null,
+    )
+    .filter((drive): drive is NonNullable<typeof drive> => Boolean(drive));
+
+  return {
+    primaryDrive,
+    secondaryDrives,
+  };
 }

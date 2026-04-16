@@ -1,8 +1,7 @@
-import { Drive } from "../../contexts/Drive";
+import type { Drive } from "../../contexts/Drive";
+import { getDriveStorageKey, writeLocalStorageJson } from "./storage";
 
 export function SaveDrive(drive: Drive) {
-  localStorage.setItem(
-    `drive-${drive.provider}-${drive.email}`,
-    JSON.stringify(drive),
-  );
+  writeLocalStorageJson(getDriveStorageKey(drive.provider, drive.email), drive);
+  return drive;
 }

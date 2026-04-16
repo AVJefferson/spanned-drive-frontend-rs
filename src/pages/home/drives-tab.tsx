@@ -1,324 +1,256 @@
 import {
+  Avatar,
   Box,
-  Accordion,
-  Typography,
   Button,
-  Grid,
-  LinearProgress,
+  Card,
+  CardContent,
   Dialog,
   DialogTitle,
+  LinearProgress,
   List,
   ListItem,
-  ListItemButton,
   ListItemAvatar,
+  ListItemButton,
   ListItemText,
-  Avatar,
+  Slider,
+  Stack,
+  Typography,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { LogoutFromLocalStorage } from "../../services/browser/logout";
-import { Drive, Drives } from "../../contexts/Drive";
+import { Drives, type Drive } from "../../contexts/Drive";
+import { createDriveKey } from "../../utils/ids";
+import { formatBytes, formatPercent } from "../../utils/formatting";
 
-function DriveCard(drive: Drive) {
-  // return an accordion that has Googleicon and email-id in it. When user clicks on it, it should accordion, basically open up into more details+settings
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <Accordion
-      expanded={expanded}
-      onChange={() => setExpanded(!expanded)}
-      sx={{
-        mb: 1,
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: "8px !important",
-        "&:before": { display: "none" },
-        boxShadow: "none",
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          p: 1.5,
-          cursor: "pointer",
-        }}
-        onClick={() => setExpanded(!expanded)}
-      >
-        {drive.provider_icon()}
-        <Typography
-          variant="body2"
-          sx={{ ml: 1, fontWeight: "medium", flexGrow: 1 }}
-          noWrap
-        >
-          {drive.email.split("@")[0]}
-        </Typography>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        >
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-      </Box>
-      <Box sx={{ px: 2, pb: 2, display: expanded ? "block" : "none" }}>
-        <Box sx={{ mt: 1.5, my: 0.1 }}>
-          <Typography variant="caption" sx={{ mb: 0.5, display: "block" }}>
-            Storage Usage
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={
-              (parseFloat(drive?.drive_details?.used_space) /
-                parseFloat(drive?.drive_details?.total_space)) *
-                100 || 0
-            }
-            sx={{ height: 6, borderRadius: 3 }}
-          />
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              mt: 0.5,
-            }}
-          ></Box>
-        </Box>
-      </Box>
-    </Accordion>
-  );
+interface DrivesTabProps {
+  primaryDrive: Drive;
+  secondaryDrives: Drive[];
+  onChangeUsageLimit: (driveKey: string, usageLimitPercent: number) => void;
 }
 
-function OnBtnClickLogout() {
-  // TODO, Make nicer UI
-  if (!window.confirm("Are you sure you want to log out?")) {
-    return;
-  }
+function usageStats(drive: Drive) {
+  const total = Number(drive.drive_details.totalSpace || 0);
+  const used = Number(drive.drive_details.usedSpace || 0);
+  const limitPercent =
+    Number(
+      drive.drive_settings.usageLimitPercent ??
+        drive.drive_settings.allowed_space_usage_percent,
+    ) || 85;
+  const allowed = total ? (total * limitPercent) / 100 : 0;
+  const usableRemaining = allowed ? Math.max(allowed - used, 0) : 0;
 
-  const Navigate = useNavigate();
-  LogoutFromLocalStorage();
-  Navigate("/signin");
+  return {
+    total,
+    used,
+    allowed,
+    usableRemaining,
+    usedPercent: total ? (used / total) * 100 : 0,
+    allowedPercent: total ? (allowed / total) * 100 : limitPercent,
+    limitPercent,
+  };
 }
 
-function LogoutIcon() {
-  return (
-    // logout icon
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-      <polyline points="16 17 21 12 16 7"></polyline>
-      <line x1="21" y1="12" x2="9" y2="12"></line>
-    </svg>
-  );
-}
-
-export default function DrivesTab(props: any) {
-  const [expandedDrives, setExpandedDrives] = useState<string[]>([]);
-  const [isDialogNewSecondaryDriveOpen, setIsDialogNewSecondaryDriveOpen] =
-    useState(false);
-
-  const { primaryDrive, secondaryDrives } = props;
-
-  function handleListItemClickForNewSecondaryDrive(provider: string) {
-    setIsDialogNewSecondaryDriveOpen(false);
-    console.log(provider, Drives[provider], Drives[provider].oauthRedirect);
-    if (!provider) return;
-    else
-      Drives[provider]?.oauth_redirect({
-        accountType: "secondary",
-      });
-  }
-
-  function AddDrivesDialog() {
-    return (
-      <Dialog open={isDialogNewSecondaryDriveOpen}>
-        <DialogTitle>Select Provider</DialogTitle>
-        <List sx={{ pt: 0 }}>
-          {Object.keys(Drives).map((p: string) => {
-            let name = p.split("/").pop()?.replace(".tsx", "") || p;
-            name = name
-              .split("-")
-              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(" ");
-
-            return (
-              <ListItem disablePadding key={name}>
-                <ListItemButton
-                  onClick={() => handleListItemClickForNewSecondaryDrive(p)}
-                >
-                  <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: "", color: "white" }}>
-                      {/* {Drives[p].provider_icon() || null} */}
-                    </Avatar>
-                  </ListItemAvatar>
-
-                  <ListItemText primary={name} />
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-          <ListItem disablePadding>
-            {/* make this one red */}
-
-            <ListItemButton
-              onClick={() => setIsDialogNewSecondaryDriveOpen(false)}
-            >
-              <ListItemAvatar>
-                <Avatar sx={{ bgcolor: "error.main" }}>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </Avatar>
-              </ListItemAvatar>
-
-              <ListItemText primary="Cancel" />
-            </ListItemButton>
-          </ListItem>
-        </List>
-      </Dialog>
-    );
-  }
+function SecondaryDriveCard({
+  drive,
+  onChangeUsageLimit,
+}: {
+  drive: Drive;
+  onChangeUsageLimit: (driveKey: string, usageLimitPercent: number) => void;
+}) {
+  const stats = usageStats(drive);
 
   return (
-    <div>
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        {/* Custom title card for primary drive */}
-        <Box
-          sx={{
-            width: "100%",
-            p: 2,
-            border: "1px solid",
-            borderColor: "primary.main",
-            borderRadius: 2,
-            bgcolor: "action.hover",
-            mb: 2,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-            {primaryDrive.provider_icon()}
-            <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: "bold" }}>
-              Primary
+    <Card variant="outlined" sx={{ borderRadius: 4 }}>
+      <CardContent>
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
+          <Avatar sx={{ bgcolor: "transparent", width: 40, height: 40 }}>
+            {drive.provider_icon()}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="subtitle2" noWrap>
+              {drive.user?.name || drive.email}
             </Typography>
-            <Button
-              title="Log Out"
-              variant="contained"
-              sx={{
-                ml: "auto",
-                mr: 0.5,
-              }}
-              style={{
-                minWidth: "32px",
-                width: "32px",
-                height: "32px",
-                padding: 0,
-              }}
-              size="small"
-              onClick={OnBtnClickLogout}
-              disableElevation
-            >
-              {LogoutIcon()}
-            </Button>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              {drive.providerLabel}
+            </Typography>
           </Box>
-          <Typography variant="body2" noWrap>
-            {primaryDrive.email.split("@")[0] || "Unknown"}
+        </Stack>
+
+        <Typography variant="caption" color="text.secondary">
+          Current usage
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={stats.usedPercent}
+          sx={{ mt: 0.75, mb: 0.75, height: 10, borderRadius: 999 }}
+        />
+        <Typography variant="body2" color="text.secondary">
+          {formatBytes(stats.used)} used of {formatBytes(stats.total)}
+        </Typography>
+
+        <Box sx={{ mt: 2.5 }}>
+          <Typography variant="caption" color="text.secondary">
+            Spanned Drive usage cap
           </Typography>
+          <Slider
+            min={10}
+            max={100}
+            step={5}
+            value={stats.limitPercent}
+            onChange={(_, value) =>
+              onChangeUsageLimit(
+                createDriveKey(drive.provider, drive.email),
+                Array.isArray(value) ? value[0] : value,
+              )
+            }
+            sx={{ mt: 0.5 }}
+          />
+          <Stack direction="row" justifyContent="space-between">
+            <Typography variant="body2" color="text.secondary">
+              Limit: {formatPercent(stats.limitPercent)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Free for SDrive: {formatBytes(stats.usableRemaining)}
+            </Typography>
+          </Stack>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function DrivesTab({
+  primaryDrive,
+  secondaryDrives,
+  onChangeUsageLimit,
+}: DrivesTabProps) {
+  const [providerDialogOpen, setProviderDialogOpen] = useState(false);
+
+  const primaryStats = usageStats(primaryDrive);
+  const secondaryTotals = useMemo(() => {
+    return secondaryDrives.reduce(
+      (accumulator, drive) => {
+        const stats = usageStats(drive);
+        accumulator.used += stats.used;
+        accumulator.allowed += stats.allowed;
+        return accumulator;
+      },
+      {
+        used: 0,
+        allowed: 0,
+      },
+    );
+  }, [secondaryDrives]);
+
+  return (
+    <Stack spacing={2}>
+      <Card
+        sx={{
+          borderRadius: 5,
+          background:
+            "linear-gradient(155deg, rgba(3,105,161,0.22), rgba(14,165,233,0.05))",
+        }}
+      >
+        <CardContent>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Avatar sx={{ bgcolor: "transparent", width: 48, height: 48 }}>
+              {primaryDrive.provider_icon()}
+            </Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="overline" color="text.secondary">
+                Primary drive
+              </Typography>
+              <Typography variant="h6" noWrap>
+                {primaryDrive.user?.name || primaryDrive.email}
+              </Typography>
+            </Box>
+          </Stack>
 
           <Box sx={{ mt: 2 }}>
             <LinearProgress
               variant="determinate"
-              value={
-                (parseFloat(primaryDrive.sdrive_used_space) /
-                  parseFloat(primaryDrive.sdrive_limit)) *
-                  100 || 20
-              }
-              valueBuffer={50}
-              aria-label="5gb"
-              sx={{ height: 6, borderRadius: 3, mb: 1 }}
-              title={"Used 3gb / Total 5gb"}
+              value={primaryStats.usedPercent}
+              sx={{ height: 12, borderRadius: 999 }}
             />
-            <LinearProgress
-              variant="determinate"
-              value={
-                (parseFloat(primaryDrive.sdrive_used_space) /
-                  parseFloat(primaryDrive.sdrive_limit)) *
-                  100 || 20
-              }
-              valueBuffer={50}
-              aria-label="5gb"
-              sx={{ height: 6, borderRadius: 3, mb: 1 }}
-            />
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              sx={{ mt: 1 }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {formatBytes(primaryStats.used)} used
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {formatBytes(primaryStats.total)} total
+              </Typography>
+            </Stack>
           </Box>
-        </Box>
-      </Box>
-      <Box
-        sx={{
-          height: "1px",
-          bgcolor: "divider",
-          my: 0.5,
-          position: "relative",
-        }}
-      />
-      {/* Total available space adding up sdrive limits of all drives*/}
-      Combined Stats
-      <Box
-        sx={{
-          height: "1px",
-          bgcolor: "divider",
-          my: 0.5,
-          position: "relative",
-        }}
-      />
-      {/* Secondary Drive Cards */}
-      <Box sx={{ mt: 2 }}>
-        {secondaryDrives.map((drive: Drive, index: number) => (
-          <DriveCard key={index} {...drive} />
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined" sx={{ borderRadius: 4 }}>
+        <CardContent>
+          <Typography variant="subtitle2">Secondary combined usage</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {secondaryDrives.length === 0
+              ? "Add secondary drives to spread uploads across more storage."
+              : `${formatBytes(secondaryTotals.used)} of ${formatBytes(secondaryTotals.allowed)} within configured SDrive limits.`}
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={
+              secondaryTotals.allowed
+                ? (secondaryTotals.used / secondaryTotals.allowed) * 100
+                : 0
+            }
+            sx={{ mt: 1.5, height: 10, borderRadius: 999 }}
+          />
+        </CardContent>
+      </Card>
+
+      <Stack spacing={1.5}>
+        {secondaryDrives.map((drive) => (
+          <SecondaryDriveCard
+            key={createDriveKey(drive.provider, drive.email)}
+            drive={drive}
+            onChangeUsageLimit={onChangeUsageLimit}
+          />
         ))}
-      </Box>
-      <Button
-        variant="outlined"
-        fullWidth
-        sx={{ mt: 2, my: 1 }}
-        onClick={() => setIsDialogNewSecondaryDriveOpen(true)}
-      >
-        Add Drive
+      </Stack>
+
+      <Button variant="contained" onClick={() => setProviderDialogOpen(true)}>
+        Add secondary drive
       </Button>
-      <AddDrivesDialog />
-    </div>
+
+      <Dialog
+        open={providerDialogOpen}
+        onClose={() => setProviderDialogOpen(false)}
+        fullWidth
+      >
+        <DialogTitle>Select a provider</DialogTitle>
+        <List sx={{ pt: 0 }}>
+          {Object.values(Drives).map((DriveImplementation) => (
+            <ListItem disablePadding key={DriveImplementation.provider}>
+              <ListItemButton
+                onClick={() => {
+                  setProviderDialogOpen(false);
+                  DriveImplementation.oauth_redirect({
+                    accountType: "secondary",
+                    hint: primaryDrive.email,
+                  });
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: "transparent" }}>
+                    {new DriveImplementation({}).provider_icon()}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText primary={DriveImplementation.provider_label} />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Dialog>
+    </Stack>
   );
 }

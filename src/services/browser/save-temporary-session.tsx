@@ -1,5 +1,5 @@
-import { Session } from "../../contexts/Session.tsx";
-import { extractSessionData } from "./utils.tsx";
+import type { Session } from "../../contexts/Session";
+import { extractSessionData } from "./utils";
 
 export default function SaveTemporarySession(session: Session) {
   const sessionStorageSessionData = {
@@ -8,7 +8,6 @@ export default function SaveTemporarySession(session: Session) {
   };
 
   sessionStorage.setItem("session", JSON.stringify(sessionStorageSessionData));
-
   return session;
 }
 

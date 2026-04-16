@@ -4,20 +4,11 @@ import { useSession } from "../../../contexts/SessionContext";
 import { GoogleDrive } from "../../../contexts/drives/google-drive";
 import { FetchGoogleWebAccessTokenAndRefreshToken } from "../../../services/google/google-auth";
 import { SaveDrive } from "../../../services/browser/save-drive";
-
-const decodeJWT = (token: string) => {
-  try {
-    // Get the middle part (payload)
-    const base64Url = token.split(".")[1];
-    // Convert Base64URL to standard Base64
-    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-    // Decode and parse JSON
-    return JSON.parse(window.atob(base64));
-  } catch (e) {
-    console.error("Invalid JWT", e);
-    return null;
-  }
-};
+import { decodeGoogleIdToken } from "../../../services/google/google-profile";
+import {
+  STORAGE_KEYS,
+  removeLocalStorageKey,
+} from "../../../services/browser/storage";
 
 export default function GoogleWebRedirect(params: any) {
   const { setPrimaryDrive, addSecondaryDrive } = useSession();
@@ -37,7 +28,7 @@ export default function GoogleWebRedirect(params: any) {
     ) {
       setErrorNode(
         <div>
-          <h1>Error: Oauth dosent seem to be valid</h1>
+          <h1>Error: OAuth context is missing</h1>
           <p>Please try signing in again.</p>
         </div>,
       );
@@ -48,16 +39,12 @@ export default function GoogleWebRedirect(params: any) {
       !params?.queryParams?.state ||
       !params?.queryParams?.iss ||
       !params?.queryParams?.code ||
-      !params?.queryParams?.scope ||
-      !params?.queryParams?.authuser ||
-      !params?.queryParams?.prompt
+      !params?.queryParams?.scope
     ) {
       setErrorNode(
         <div>
           <h1>Error: Missing required parameters</h1>
-          <p>
-            Missing one or more required parameters for Google OAuth redirect.
-          </p>
+          <p>Google did not return the full OAuth callback payload.</p>
         </div>,
       );
       return;
@@ -67,7 +54,7 @@ export default function GoogleWebRedirect(params: any) {
       params?.provider !== "google-drive" &&
       params.oauthParams.provider !== "google-drive"
     ) {
-      setErrorNode(<h1>Provider Mismatch. Something has gone wrong!!!</h1>);
+      setErrorNode(<h1>Provider mismatch</h1>);
       return;
     }
 
@@ -77,37 +64,25 @@ export default function GoogleWebRedirect(params: any) {
           <h1>Error: Invalid issuer</h1>
           <p>Expected issuer: https://accounts.google.com</p>
           <p>Received issuer: {params.queryParams.iss}</p>
-          <p>
-            Your account might be at risk. Please check your account activity.
-          </p>
-          <p>If you feel this is a mistake, please contact us.</p>
         </div>,
       );
       return;
     }
 
-    const isPrimaryDrive = params.queryParams.state.split("~")[0] === "primary";
-    const isSecondaryDrive =
-      params.queryParams.state.split("~")[0] === "secondary";
-
-    const nonceFromState = params.queryParams.state.split("~")[1];
+    const stateParts = params.queryParams.state.split("~");
+    const accountType = stateParts[0];
+    const nonceFromState = stateParts[1];
 
     if (nonceFromState !== params.oauthParams.nonce) {
       setErrorNode(
         <div>
           <h1>Error: Invalid state parameter</h1>
-          <p>Expected state: {params.oauthParams.nonce}</p>
-          <p>Received state: {nonceFromState}</p>
-          <p>
-            This could be a CSRF attack. Please do not proceed and contact
-            support immediately.
-          </p>
+          <p>Please try signing in again.</p>
         </div>,
       );
       return;
     }
 
-    // Required scopes for the application
     const requiredScopes = [
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/drive.appdata",
@@ -123,20 +98,7 @@ export default function GoogleWebRedirect(params: any) {
       setErrorNode(
         <div>
           <h1>Error: Missing required scopes</h1>
-          <p>
-            The following required scopes are missing from the OAuth response:
-          </p>
-          <ul>
-            {missingScopes.map((scope) => (
-              <li key={scope}>
-                {scope.split("https://www.googleapis.com/auth/")[1] || scope}
-              </li>
-            ))}
-          </ul>
-          <p>
-            Please ensure you grant all required permissions and try signing in
-            again.
-          </p>
+          <p>Please approve all requested permissions and try again.</p>
         </div>,
       );
       return;
@@ -145,59 +107,64 @@ export default function GoogleWebRedirect(params: any) {
     FetchGoogleWebAccessTokenAndRefreshToken(
       params.queryParams.code,
       params.oauthParams.verifier,
-    ).then((data) => {
-      if (data && data.access_token) {
-        data.user = decodeJWT(data.id_token);
+    )
+      .then(async (data) => {
+        if (!data?.access_token || !data?.id_token) {
+          throw new Error("Missing Google token response");
+        }
+
+        const user = decodeGoogleIdToken(data.id_token);
+        if (!user?.email) {
+          throw new Error("Unable to determine Google account email");
+        }
 
         const drive = new GoogleDrive({
-          email: data.user.email,
-
-          refresh_token: data.refresh_token,
+          email: user.email,
+          refresh_token: data.refresh_token || "",
           acquired_at: Date.now(),
-          scope: data.scope.split(" "),
-
+          scope: data.scope?.split(" ") || [],
           access_token: data.access_token,
           expires_in: data.expires_in,
-
           user: {
-            name: data.user.name,
-            picture: data.user.picture,
-            sub: data.user.sub,
+            name: user.name,
+            picture: user.picture,
+            sub: user.sub,
           },
-
           drive_settings: {
-            allowed_space_usage_percent: 80,
+            usageLimitPercent: 85,
+            allowed_space_usage_percent: 85,
           },
-
           drive_details: {
-            isPrimaryDrive: isPrimaryDrive,
-            isSecondaryDrive: !isSecondaryDrive,
-
-            total_space: 0,
-            used_space: 0,
-            free_space: 0,
+            totalSpace: 0,
+            usedSpace: 0,
+            freeSpace: 0,
           },
-
           drive_span: {},
         });
 
-        SaveDrive(drive);
-        localStorage.removeItem("oauth_params");
+        try {
+          await drive.refresh_drive_details();
+        } catch (error) {
+          console.warn("Drive details refresh failed during login", error);
+        }
 
-        if (isPrimaryDrive) {
+        SaveDrive(drive);
+        removeLocalStorageKey(STORAGE_KEYS.oauthParams);
+
+        if (accountType === "primary") {
           setPrimaryDrive(drive);
-        } else if (isSecondaryDrive) {
+        } else if (accountType === "secondary") {
           addSecondaryDrive(drive);
         } else {
-          navigate("/error?error=Oauth%20Failed%20due%20to%20invalid%20state");
-          return <div></div>;
+          throw new Error("Invalid account type in OAuth state");
         }
 
         navigate("/");
-      } else {
+      })
+      .catch((error) => {
+        console.error(error);
         navigate("/error?error=Oauth%20Failed");
-      }
-    });
+      });
   }, [params, navigate, setPrimaryDrive, addSecondaryDrive]);
 
   if (errorNode) {
@@ -206,7 +173,7 @@ export default function GoogleWebRedirect(params: any) {
 
   return (
     <div>
-      <h1>Google Web Redirect ... Processing</h1>
+      <h1>Connecting your Google Drive...</h1>
     </div>
   );
 }

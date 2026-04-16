@@ -1,19 +1,23 @@
-import { Session } from "../../contexts/Session.tsx";
+import type { Session, PersistedSession } from "../../contexts/Session";
+import { STORAGE_KEYS, writeLocalStorageJson } from "./storage";
 
-export default function SavePersistentSession(session: Session) {
-  const sessionToSave = {
-    primaryDrive: {
-      email: session?.primaryDrive?.email,
-      provider: session?.primaryDrive?.provider,
-    },
-    secondaryDrives: session.secondaryDrives.map((sd) => ({
-      email: sd.email,
-      provider: sd.provider,
+export function toPersistedSession(session: Session): PersistedSession {
+  return {
+    primaryDrive: session.primaryDrive
+      ? {
+          email: session.primaryDrive.email,
+          provider: session.primaryDrive.provider,
+        }
+      : null,
+    secondaryDrives: session.secondaryDrives.map((drive) => ({
+      email: drive.email,
+      provider: drive.provider,
     })),
   };
+}
 
-  localStorage.setItem("session", JSON.stringify(sessionToSave));
-
+export default function SavePersistentSession(session: Session) {
+  writeLocalStorageJson(STORAGE_KEYS.session, toPersistedSession(session));
   return session;
 }
 

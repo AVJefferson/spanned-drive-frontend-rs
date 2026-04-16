@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { STORAGE_KEYS } from "../../services/browser/storage";
 
 const providers: Record<string, any> = import.meta.glob("./providers/*.tsx", {
   eager: true,
@@ -17,8 +18,8 @@ const OauthRedirectPages = () => {
     provider,
     queryParams: Object.fromEntries(queryParams.entries()),
     hashParams: Object.fromEntries(hashParams.entries()),
-    oauthParams: localStorage.getItem("oauth_params")
-      ? JSON.parse(localStorage.getItem("oauth_params")!)
+    oauthParams: localStorage.getItem(STORAGE_KEYS.oauthParams)
+      ? JSON.parse(localStorage.getItem(STORAGE_KEYS.oauthParams)!)
       : {},
   };
 

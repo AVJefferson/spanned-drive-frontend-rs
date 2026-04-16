@@ -1,12 +1,26 @@
 import { defineConfig } from "vite";
-import { sveltekit } from "@sveltejs/kit/vite";
+import react from "@vitejs/plugin-react";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
+function clearConsole() {
+  return {
+    name: "clear-console",
+    // Clears on file save (Hot Module Replacement)
+    handleHotUpdate() {
+      console.clear();
+    },
+    // Clears on initial server start or full restart
+    buildStart() {
+      console.clear();
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [sveltekit()],
+  plugins: [react(), clearConsole()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -14,14 +28,14 @@ export default defineConfig(async () => ({
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 80,
+    port: 1420,
     strictPort: true,
-    host: host || "0.0.0.0",
+    host: host || false,
     hmr: host
       ? {
           protocol: "ws",
           host,
-          port: 80,
+          port: 1421,
         }
       : undefined,
     watch: {

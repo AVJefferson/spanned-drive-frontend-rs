@@ -4,6 +4,8 @@ import type {
   DriveUploadResult,
 } from "../../contexts/Drive";
 
+import { googleDriveFetch } from "./google-drive-http";
+
 const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
 const GOOGLE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
@@ -31,7 +33,7 @@ async function authorizedFetch<T>(
   init?: RequestInit,
 ): Promise<T> {
   const accessToken = await drive.fetch_access_token();
-  const response = await fetch(url, {
+  const response = await googleDriveFetch(url, {
     ...init,
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -220,7 +222,7 @@ export async function readGoogleAppStorageJson<T>(
   }
 
   const accessToken = await drive.fetch_access_token();
-  const response = await fetch(
+  const response = await googleDriveFetch(
     `${GOOGLE_DRIVE_API}/files/${encodeURIComponent(file.id)}?alt=media`,
     {
       headers: {

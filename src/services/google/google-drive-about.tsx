@@ -1,5 +1,7 @@
 import type { Drive, DriveDetails } from "../../contexts/Drive";
 
+import { googleDriveFetch } from "./google-drive-http";
+
 const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
 
 async function authorizedRequest<T>(
@@ -8,7 +10,7 @@ async function authorizedRequest<T>(
   init?: RequestInit,
 ) {
   const accessToken = await drive.fetch_access_token();
-  const response = await fetch(`${GOOGLE_DRIVE_API}${path}`, {
+  const response = await googleDriveFetch(`${GOOGLE_DRIVE_API}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${accessToken}`,

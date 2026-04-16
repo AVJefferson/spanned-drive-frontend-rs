@@ -3,6 +3,7 @@ fn runtime_environment() -> serde_json::Value {
     serde_json::json!({
         "runtime": "tauri",
         "tauri": true,
+        "tauriVersion": env!("CARGO_PKG_VERSION"),
         "platform": std::env::consts::OS,
     })
 }

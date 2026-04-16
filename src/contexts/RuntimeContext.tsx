@@ -12,6 +12,8 @@ import { detectRuntime, type RuntimeInfo } from "../services/runtime/tauri";
 const defaultRuntime: RuntimeInfo = {
   kind: "browser",
   tauriAvailable: false,
+  tauriVersion: "Not Available",
+  appVersion: "unknown",
   platform: "unknown",
   via: "fallback",
 };

@@ -22,6 +22,7 @@ import { useLogicalFolders } from "../../contexts/LogicalFolders";
 import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
 import { useSession } from "../../contexts/SessionContext";
 import { useTasks } from "../../contexts/TasksContext";
+import { createDriveKey } from "../../utils/ids";
 
 import { CreateLogicalFolderDialog, DestinationDialog } from "./home-dialogs";
 import { HomeExplorer } from "./home-explorer";
@@ -75,6 +76,7 @@ const HomePage = () => {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  const refreshedDriveSetRef = useRef<string | null>(null);
 
   useEffect(() => {
     folderInputRef.current?.setAttribute("webkitdirectory", "");
@@ -88,10 +90,24 @@ const HomePage = () => {
   }, [navigate, session.primaryDrive]);
 
   useEffect(() => {
-    if (session.primaryDrive) {
-      void refreshAllDriveDetails();
+    const driveSetSignature = [
+      ...(session.primaryDrive
+        ? [createDriveKey(session.primaryDrive.provider, session.primaryDrive.email)]
+        : []),
+      ...session.secondaryDrives.map((drive) =>
+        createDriveKey(drive.provider, drive.email),
+      ),
+    ]
+      .sort()
+      .join("|");
+
+    if (!driveSetSignature || refreshedDriveSetRef.current === driveSetSignature) {
+      return;
     }
-  }, [refreshAllDriveDetails, session.primaryDrive]);
+
+    refreshedDriveSetRef.current = driveSetSignature;
+    void refreshAllDriveDetails();
+  }, [refreshAllDriveDetails, session.primaryDrive, session.secondaryDrives]);
 
   const activeLogicalFolder = selectedLogicalFolderId
     ? getLogicalFolder(selectedLogicalFolderId)

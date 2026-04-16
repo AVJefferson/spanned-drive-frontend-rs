@@ -6,6 +6,7 @@ import {
   ReactNode,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 
 import { createDriveKey } from "../utils/ids";
@@ -41,16 +42,25 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSessionState] = useState<Session>(
     initializeSessionFromLocalStorage(),
   );
+  const lastSyncedPersistedSession = useRef<string | null>(null);
 
   useEffect(() => {
     if (!session.primaryDrive) {
+      lastSyncedPersistedSession.current = null;
       return;
     }
 
+    const persistedSession = toPersistedSession(session);
+    const persistedSessionKey = JSON.stringify(persistedSession);
+
     SavePersistentSession(session);
-    void mergeRemoteAppStorage(session.primaryDrive, {
-      session: toPersistedSession(session),
-    });
+
+    if (lastSyncedPersistedSession.current === persistedSessionKey) {
+      return;
+    }
+
+    lastSyncedPersistedSession.current = persistedSessionKey;
+    void mergeRemoteAppStorage(session.primaryDrive, { session: persistedSession });
   }, [session]);
 
   const setPrimaryDrive = useCallback((primaryDrive: Drive) => {

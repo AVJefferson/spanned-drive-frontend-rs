@@ -68,7 +68,7 @@ function SecondaryDriveCard({
           </Avatar>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="subtitle2" noWrap>
-              {drive.user?.name || drive.email}
+              {drive?.email?.split("@")[0] || drive.email || "Unknown"}
             </Typography>
             <Typography variant="caption" color="text.secondary" noWrap>
               {drive.providerLabel}
@@ -235,8 +235,7 @@ export default function DrivesTab({
                 onClick={() => {
                   setProviderDialogOpen(false);
                   DriveImplementation.oauth_redirect({
-                    accountType: "secondary",
-                    hint: primaryDrive.email,
+                    accountType: "secondary"
                   });
                 }}
               >

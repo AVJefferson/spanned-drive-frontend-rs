@@ -168,7 +168,21 @@ export default function GoogleWebRedirect(params: any) {
   }, [params, navigate, setPrimaryDrive, addSecondaryDrive]);
 
   if (errorNode) {
-    return errorNode;
+    return (
+      <>
+      <div>
+        {errorNode}
+      </div>
+      <div>
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+        >
+          Go back
+        </button>
+      </div>
+      </>
+    );
   }
 
   return (

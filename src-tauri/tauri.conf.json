@@ -12,9 +12,18 @@
   "app": {
     "windows": [
       {
-        "title": "spanned-drive-frontend-rs",
-        "width": 800,
-        "height": 600
+        "title": "Spanned Drive",
+        "width": 1200,
+        "height": 760,
+        "resizable": true,
+        "fullscreen": false,
+        "maximized": false,
+        "center": true,
+        "decorations": true,
+        "visible": true,
+        "focus": true,
+        "transparent": false,
+        "acceptFirstMouse": true
       }
     ],
     "security": {

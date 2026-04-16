@@ -59,7 +59,7 @@ function App() {
           },
         },
         shape: {
-          borderRadius: 18,
+          borderRadius: 5,
         },
         typography: {
           fontFamily:

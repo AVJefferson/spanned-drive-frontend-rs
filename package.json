@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build-dev": "tsc && vite build && rm -rf /var/www/sdrive/* && cp /home/avjef/spanned-drive-frontend-rs/dist/* /var/www/sdrive/ -r",
+    "deploy": "tsc && vite build && rm -rf /var/www/sdrive/* && cp dist/* /var/www/sdrive/ -r",
     "preview": "vite preview",
     "tauri": "tauri"
   },

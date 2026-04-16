@@ -184,9 +184,6 @@ export function SettingsTab() {
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             Environment: {runtime.kind}
           </Typography>
-          {/* <Typography variant="body2" color="text.secondary">
-            Detected via: {runtime.via}
-          </Typography> */}
           <Typography variant="body2" color="text.secondary">
             Tauri Version: {runtime?.tauriVersion || "Unknown"}
           </Typography>

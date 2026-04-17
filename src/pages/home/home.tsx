@@ -21,7 +21,7 @@ import { useNavigate } from "react-router-dom";
 import { useLogicalFolders } from "../../contexts/LogicalFolders";
 import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
 import { useSession } from "../../contexts/SessionContext";
-import { useTasks } from "../../contexts/TasksContext";
+import { useTasksActions } from "../../contexts/TasksContext";
 import { createDriveKey } from "../../utils/ids";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 
@@ -56,7 +56,7 @@ const HomePage = () => {
   const { session, setDriveUsageLimit, refreshAllDriveDetails } = useSession();
   const { logicalFolders, isReady, createLogicalFolder, getLogicalFolder } =
     useLogicalFolders();
-  const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove } = useTasks();
+  const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove } = useTasksActions();
 
   const [selectedLogicalFolderId, setSelectedLogicalFolderId] = useState<string | null>(
     null,

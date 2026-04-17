@@ -96,6 +96,9 @@ export interface TaskRecord {
 
 interface TasksContextValue {
   tasks: TaskRecord[];
+}
+
+interface TasksActionsContextValue {
   enqueueUpload: (
     logicalFolderId: string,
     parentId: string | null,
@@ -116,7 +119,8 @@ interface TasksContextValue {
   clearFinishedTasks: () => void;
 }
 
-const TasksContext = createContext<TasksContextValue | undefined>(undefined);
+const TasksStateContext = createContext<TasksContextValue | undefined>(undefined);
+const TasksActionsContext = createContext<TasksActionsContextValue | undefined>(undefined);
 
 function getRelativePath(file: File) {
   return (file as File & { webkitRelativePath?: string }).webkitRelativePath || "";
@@ -1061,9 +1065,15 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
-  const value = useMemo<TasksContextValue>(
+  const stateValue = useMemo<TasksContextValue>(
     () => ({
       tasks,
+    }),
+    [tasks],
+  );
+
+  const actionsValue = useMemo<TasksActionsContextValue>(
+    () => ({
       enqueueUpload,
       enqueueDelete,
       enqueueCopy,
@@ -1072,7 +1082,6 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       clearFinishedTasks,
     }),
     [
-      tasks,
       enqueueUpload,
       enqueueDelete,
       enqueueCopy,
@@ -1082,14 +1091,36 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
+  return (
+    <TasksStateContext.Provider value={stateValue}>
+      <TasksActionsContext.Provider value={actionsValue}>
+        {children}
+      </TasksActionsContext.Provider>
+    </TasksStateContext.Provider>
+  );
 }
 
-export function useTasks() {
-  const context = useContext(TasksContext);
+export function useTasksState() {
+  const context = useContext(TasksStateContext);
   if (!context) {
-    throw new Error("useTasks must be used within TasksProvider");
+    throw new Error("useTasksState must be used within TasksProvider");
   }
 
   return context;
+}
+
+export function useTasksActions() {
+  const context = useContext(TasksActionsContext);
+  if (!context) {
+    throw new Error("useTasksActions must be used within TasksProvider");
+  }
+
+  return context;
+}
+
+export function useTasks() {
+  return {
+    ...useTasksState(),
+    ...useTasksActions(),
+  };
 }

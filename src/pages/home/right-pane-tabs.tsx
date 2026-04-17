@@ -18,7 +18,7 @@ import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTy
 import { useRuntime } from "../../contexts/RuntimeContext";
 import { useSession } from "../../contexts/SessionContext";
 import { useSettings } from "../../contexts/SettingsContext";
-import { useTasks } from "../../contexts/TasksContext";
+import { useTasksActions, useTasksState } from "../../contexts/TasksContext";
 import { formatBytes, formatDateTime } from "../../utils/formatting";
 export { default as DrivesTab } from "./drives-tab";
 
@@ -200,7 +200,8 @@ export function SettingsTab() {
 }
 
 export function TasksTab() {
-  const { tasks, retryTask, clearFinishedTasks } = useTasks();
+  const { tasks } = useTasksState();
+  const { retryTask, clearFinishedTasks } = useTasksActions();
 
   return (
     <Stack spacing={2}>

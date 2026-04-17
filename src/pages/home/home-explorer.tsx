@@ -166,6 +166,22 @@ export function HomeExplorer({
     return ids;
   }, [activeTasks]);
 
+  const activeItems = activeLogicalFolder?.items || [];
+  const entries = activeItems.filter(
+    (entry) => entry.parentId === currentParentId,
+  );
+  const childCountByParent = useMemo(() => {
+    const counts = new Map<string, number>();
+    activeItems.forEach((item) => {
+      if (!item.parentId) {
+        return;
+      }
+
+      counts.set(item.parentId, (counts.get(item.parentId) || 0) + 1);
+    });
+    return counts;
+  }, [activeItems]);
+
   if (!activeLogicalFolder) {
     return (
       <Stack spacing={2.5}>
@@ -225,7 +241,7 @@ export function HomeExplorer({
                           return (
                             <Chip
                               key={backend.driveKey}
-                              label={backend.email.split("@")[0]}
+                              label={(backend.email || "").split("@")[0] || "drive"}
                               size="small"
                               variant="outlined"
                               icon={
@@ -254,22 +270,6 @@ export function HomeExplorer({
       </Stack>
     );
   }
-
-  const activeItems = activeLogicalFolder.items || [];
-  const entries = activeItems.filter(
-    (entry) => entry.parentId === currentParentId,
-  );
-  const childCountByParent = useMemo(() => {
-    const counts = new Map<string, number>();
-    activeItems.forEach((item) => {
-      if (!item.parentId) {
-        return;
-      }
-
-      counts.set(item.parentId, (counts.get(item.parentId) || 0) + 1);
-    });
-    return counts;
-  }, [activeItems]);
 
   return (
     <Stack spacing={2.5}>

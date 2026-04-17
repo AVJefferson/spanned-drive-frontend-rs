@@ -98,9 +98,11 @@ function DrivePlacementList({
 }: {
   selectedEntry: LogicalEntry;
 }) {
+  const placements = selectedEntry.placements || [];
+
   return (
     <Stack spacing={1}>
-      {selectedEntry.placements.map((placement) => (
+      {placements.map((placement) => (
         <Card key={`${placement.driveKey}-${placement.itemId}`} variant="outlined">
           <CardContent sx={{ py: 1.5 }}>
             <Typography variant="subtitle2">{placement.email}</Typography>
@@ -143,7 +145,7 @@ export function InfoTab({
             </Typography>
             <Typography variant="subtitle2">
               {selectedEntry.kind === "folder"
-                ? `${logicalFolder.items.filter(
+                ? `${(logicalFolder.items || []).filter(
                     (entry) => entry.parentId === selectedEntry.id,
                   ).length} direct items`
                 : formatBytes(selectedEntry.size)}

@@ -159,13 +159,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         }
 
         hydratedKnownSecondaryRef.current = primaryDriveKey;
-        setKnownSecondaryAccounts(
+        setKnownSecondaryAccounts((prev) =>
           normalizeKnownSecondaryAccounts([
             ...(remoteState.knownSecondaryAccounts || []),
-            ...session.secondaryDrives.map((drive) => ({
-              provider: drive.provider,
-              email: drive.email,
-            })),
+            ...prev,
           ]),
         );
       })
@@ -176,7 +173,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [session.primaryDrive, session.secondaryDrives]);
+  }, [session.primaryDrive]);
 
   useEffect(() => {
     if (!session.primaryDrive) {

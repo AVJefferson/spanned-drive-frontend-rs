@@ -39,11 +39,21 @@ const LogicalFoldersContext = createContext<
   LogicalFoldersContextValue | undefined
 >(undefined);
 
+function normalizeLogicalEntry(entry: LogicalEntry): LogicalEntry {
+  return {
+    ...entry,
+    parentId: entry.parentId ?? null,
+    placements: Array.isArray(entry.placements) ? entry.placements : [],
+  };
+}
+
 function normalizeLogicalFolder(folder: LogicalFolder): LogicalFolder {
   return {
     ...folder,
     backends: Array.isArray(folder.backends) ? folder.backends : [],
-    items: Array.isArray(folder.items) ? sortEntries(folder.items) : [],
+    items: Array.isArray(folder.items)
+      ? sortEntries(folder.items.map(normalizeLogicalEntry))
+      : [],
   };
 }
 

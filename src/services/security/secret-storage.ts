@@ -8,7 +8,10 @@ const DRIVE_REFRESH_SECRET_SCOPE = "drive.refresh-token";
 const SERVICE_NAME = "spanned-drive-frontend-rs";
 
 function hasTauriRuntime() {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  return (
+    typeof window !== "undefined" &&
+    ("__TAURI_INTERNALS__" in window || "__TAURI__" in window)
+  );
 }
 
 function toFallbackStorageKey(secretKey: string) {
@@ -25,43 +28,71 @@ export function createDriveRefreshSecretKey(provider: string, email: string) {
 }
 
 export async function setSecret(secretKey: string, value: string) {
+  const fallbackStorageKey = toFallbackStorageKey(secretKey);
   if (!value) {
     return deleteSecret(secretKey);
   }
 
+  localStorage.setItem(fallbackStorageKey, value);
+
   if (hasTauriRuntime()) {
-    await invokeSecret("set_secret", {
-      service: SERVICE_NAME,
-      key: secretKey,
-      value,
-    });
+    try {
+      await invokeSecret("set_secret", {
+        service: SERVICE_NAME,
+        key: secretKey,
+        value,
+      });
+    } catch (error) {
+      console.warn(
+        `Unable to persist secret in secure storage for key "${secretKey}", using fallback storage.`,
+        error,
+      );
+    }
     return;
   }
-
-  localStorage.setItem(toFallbackStorageKey(secretKey), value);
 }
 
 export async function getSecret(secretKey: string): Promise<string | null> {
+  const fallbackStorageKey = toFallbackStorageKey(secretKey);
+  const fallbackValue = localStorage.getItem(fallbackStorageKey);
+
   if (hasTauriRuntime()) {
-    return invokeSecret<string | null>("get_secret", {
-      service: SERVICE_NAME,
-      key: secretKey,
-    });
+    try {
+      const secureValue = await invokeSecret<string | null>("get_secret", {
+        service: SERVICE_NAME,
+        key: secretKey,
+      });
+      return secureValue || fallbackValue;
+    } catch (error) {
+      console.warn(
+        `Unable to read secret from secure storage for key "${secretKey}", using fallback storage.`,
+        error,
+      );
+      return fallbackValue;
+    }
   }
 
-  return localStorage.getItem(toFallbackStorageKey(secretKey));
+  return fallbackValue;
 }
 
 export async function deleteSecret(secretKey: string) {
+  const fallbackStorageKey = toFallbackStorageKey(secretKey);
+  localStorage.removeItem(fallbackStorageKey);
+
   if (hasTauriRuntime()) {
-    await invokeSecret("delete_secret", {
-      service: SERVICE_NAME,
-      key: secretKey,
-    });
+    try {
+      await invokeSecret("delete_secret", {
+        service: SERVICE_NAME,
+        key: secretKey,
+      });
+    } catch (error) {
+      console.warn(
+        `Unable to delete secret from secure storage for key "${secretKey}".`,
+        error,
+      );
+    }
     return;
   }
-
-  localStorage.removeItem(toFallbackStorageKey(secretKey));
 }
 
 export async function clearDriveRefreshSecrets(drives: DriveSecretReference[]) {

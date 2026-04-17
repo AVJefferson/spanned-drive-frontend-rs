@@ -19,6 +19,11 @@ import {
 } from "../../services/google/google-drive-files";
 import { GoogleOauthRedirect } from "../../services/google/google-oauth-signin";
 import { SaveDrive } from "../../services/browser/save-drive";
+import {
+  createDriveRefreshSecretKey,
+  getSecret,
+  setSecret,
+} from "../../services/security/secret-storage";
 import type { JSX } from "react";
 
 export interface GoogleDriveSettings extends DriveSettings {
@@ -118,15 +123,46 @@ export class GoogleDrive implements Drive {
     return expiry - ACCESS_TOKEN_SKEW_MS > Date.now();
   }
 
+  private refreshTokenSecretKey() {
+    return createDriveRefreshSecretKey(this.provider, this.email);
+  }
+
+  private async resolveRefreshToken() {
+    if (this.refresh_token) {
+      return this.refresh_token;
+    }
+
+    const storedRefreshToken = await getSecret(this.refreshTokenSecretKey());
+    if (!storedRefreshToken) {
+      return "";
+    }
+
+    this.refresh_token = storedRefreshToken;
+    return this.refresh_token;
+  }
+
   async fetch_access_token() {
     if (this.hasFreshAccessToken()) {
       return this.access_token || null;
     }
 
-    const tokenResponse = await FetchGoogleAccessToken(this.refresh_token);
+    const refreshToken = await this.resolveRefreshToken();
+    if (!refreshToken) {
+      throw new Error(
+        "Drive credentials are unavailable. Reconnect this drive to continue.",
+      );
+    }
+
+    const tokenResponse = await FetchGoogleAccessToken(refreshToken);
     this.access_token = tokenResponse.access_token;
     this.expires_in = tokenResponse.expires_in;
     this.acquired_at = Date.now();
+
+    if (tokenResponse.refresh_token && tokenResponse.refresh_token !== this.refresh_token) {
+      this.refresh_token = tokenResponse.refresh_token;
+      await setSecret(this.refreshTokenSecretKey(), this.refresh_token);
+    }
+
     SaveDrive(this);
 
     return this.access_token || null;

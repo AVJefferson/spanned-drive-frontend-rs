@@ -32,6 +32,37 @@ fn allowed_google_apis_url(url: &str) -> bool {
     url.starts_with("https://www.googleapis.com/")
 }
 
+fn keyring_entry(service: &str, key: &str) -> Result<keyring::Entry, String> {
+    keyring::Entry::new(service, key).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn set_secret(service: String, key: String, value: String) -> Result<(), String> {
+    let entry = keyring_entry(&service, &key)?;
+    entry
+        .set_password(&value)
+        .map_err(|error| format!("Unable to store secret: {error}"))
+}
+
+#[tauri::command]
+fn get_secret(service: String, key: String) -> Result<Option<String>, String> {
+    let entry = keyring_entry(&service, &key)?;
+    match entry.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(format!("Unable to read secret: {error}")),
+    }
+}
+
+#[tauri::command]
+fn delete_secret(service: String, key: String) -> Result<(), String> {
+    let entry = keyring_entry(&service, &key)?;
+    match entry.delete_credential() {
+        Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(error) => Err(format!("Unable to delete secret: {error}")),
+    }
+}
+
 #[tauri::command]
 async fn google_drive_http_request(
     request: GoogleDriveHttpRequest,
@@ -83,7 +114,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             runtime_environment,
-            google_drive_http_request
+            google_drive_http_request,
+            set_secret,
+            get_secret,
+            delete_secret
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
 
 const DRIVE_STORAGE_PREFIX = "sdrive.drive.";
 const LEGACY_DRIVE_STORAGE_PREFIX = "drive-";
+const SECRET_STORAGE_PREFIX = "sdrive.secret.";
 
 export function getDriveStorageKey(provider: string, email: string) {
   return `${DRIVE_STORAGE_PREFIX}${encodeURIComponent(provider)}::${encodeURIComponent(email)}`;
@@ -68,6 +69,7 @@ export function clearSessionScopedStorage() {
     if (
       key.startsWith(DRIVE_STORAGE_PREFIX) ||
       key.startsWith(LEGACY_DRIVE_STORAGE_PREFIX) ||
+      key.startsWith(SECRET_STORAGE_PREFIX) ||
       key === STORAGE_KEYS.session ||
       key === STORAGE_KEYS.logicalFolders ||
       key === STORAGE_KEYS.tasks ||
@@ -81,4 +83,32 @@ export function clearSessionScopedStorage() {
 
   keysToDelete.forEach((key) => localStorage.removeItem(key));
   sessionStorage.clear();
+}
+
+export function listStoredDriveReferences() {
+  const drives = new Map<string, { provider: string; email: string }>();
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key) {
+      continue;
+    }
+
+    if (key.startsWith(DRIVE_STORAGE_PREFIX)) {
+      const encoded = key.slice(DRIVE_STORAGE_PREFIX.length);
+      const [provider, email] = encoded.split("::");
+      if (!provider || !email) {
+        continue;
+      }
+
+      const decoded = {
+        provider: decodeURIComponent(provider),
+        email: decodeURIComponent(email),
+      };
+      drives.set(`${decoded.provider}:${decoded.email}`.toLowerCase(), decoded);
+    }
+
+  }
+
+  return Array.from(drives.values());
 }

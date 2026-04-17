@@ -17,6 +17,7 @@ import {
   PrivacyPage,
   OauthRedirectPages,
 } from "./pages";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useSettings } from "./contexts/SettingsContext";
 
 function App() {
@@ -124,17 +125,22 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <main>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/error" element={<ErrorPage />} />
-          <Route path="/signin" element={<SignInPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/terms/:date" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/privacy/:date" element={<PrivacyPage />} />
-          <Route path="/oauth/redirect/:provider" element={<OauthRedirectPages />} />
-          <Route path="*" element={<h1>404 - Not found</h1>} />
-        </Routes>
+        <ErrorBoundary
+          title="App error"
+          message="A page crashed while rendering. Try again or reload the app."
+        >
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/error" element={<ErrorPage />} />
+            <Route path="/signin" element={<SignInPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/terms/:date" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/privacy/:date" element={<PrivacyPage />} />
+            <Route path="/oauth/redirect/:provider" element={<OauthRedirectPages />} />
+            <Route path="*" element={<h1>404 - Not found</h1>} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </ThemeProvider>
   );

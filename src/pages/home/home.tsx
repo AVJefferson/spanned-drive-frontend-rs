@@ -23,6 +23,7 @@ import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
 import { useSession } from "../../contexts/SessionContext";
 import { useTasks } from "../../contexts/TasksContext";
 import { createDriveKey } from "../../utils/ids";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 
 import { CreateLogicalFolderDialog, DestinationDialog } from "./home-dialogs";
 import { HomeExplorer } from "./home-explorer";
@@ -257,37 +258,42 @@ const HomePage = () => {
     );
 
   const explorerPanel = (
-    <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 },}}>
-      {!isReady ? (
-        <Typography color="text.secondary">Loading your logical folders...</Typography>
-      ) : (
-        <HomeExplorer
-          logicalFolders={logicalFolders}
-          activeLogicalFolder={activeLogicalFolder}
-          currentParentId={currentParentId}
-          selectedEntryId={selectedEntryId}
-          breadcrumbs={breadcrumbs}
-          onOpenLogicalFolder={openLogicalFolder}
-          onBackToRoot={() => {
-            setSelectedLogicalFolderId(null);
-            setCurrentParentId(null);
-            resetSelection();
-          }}
-          onNavigateToFolder={(entryId) => {
-            setCurrentParentId(entryId);
-            resetSelection();
-          }}
-          onOpenEntry={openEntry}
-          onOpenInfo={openInfo}
-          onCreateLogicalFolder={() => {
-            setCreateName("");
-            setSelectedDriveKeys([]);
-            setCreateError("");
-            setCreateDialogOpen(true);
-          }}
-        />
-      )}
-    </Paper>
+    <ErrorBoundary
+      title="Explorer error"
+      message="The file explorer failed to render. Retry this section or reload the app."
+    >
+      <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 }, }}>
+        {!isReady ? (
+          <Typography color="text.secondary">Loading your logical folders...</Typography>
+        ) : (
+          <HomeExplorer
+            logicalFolders={logicalFolders}
+            activeLogicalFolder={activeLogicalFolder}
+            currentParentId={currentParentId}
+            selectedEntryId={selectedEntryId}
+            breadcrumbs={breadcrumbs}
+            onOpenLogicalFolder={openLogicalFolder}
+            onBackToRoot={() => {
+              setSelectedLogicalFolderId(null);
+              setCurrentParentId(null);
+              resetSelection();
+            }}
+            onNavigateToFolder={(entryId) => {
+              setCurrentParentId(entryId);
+              resetSelection();
+            }}
+            onOpenEntry={openEntry}
+            onOpenInfo={openInfo}
+            onCreateLogicalFolder={() => {
+              setCreateName("");
+              setSelectedDriveKeys([]);
+              setCreateError("");
+              setCreateDialogOpen(true);
+            }}
+          />
+        )}
+      </Paper>
+    </ErrorBoundary>
   );
 
   return (

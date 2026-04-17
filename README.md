@@ -19,6 +19,11 @@ The deploy script is environment-driven and works across Linux/macOS/CI runners.
 - target directory cleanup
 - recursive copy of `dist` contents into `DEPLOY_TARGET_DIR`
 
+## Architecture Notes
+
+- [State ownership and boundaries](docs/architecture/state-ownership.md)
+- [Storage security model](docs/architecture/storage-security.md)
+
 ## Recommended IDE Setup
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)

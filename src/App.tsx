@@ -32,6 +32,30 @@ function App() {
 
   const theme = useMemo(
     () => {
+      const bodyFontStack = [
+        '"Inter"',
+        '"Segoe UI Variable Text"',
+        '"Segoe UI"',
+        '"SF Pro Text"',
+        '"Roboto"',
+        '"Noto Sans"',
+        '"Helvetica Neue"',
+        "Arial",
+        "sans-serif",
+      ].join(", ");
+      const headingFontStack = [
+        '"Inter"',
+        '"Segoe UI Variable Display"',
+        '"Segoe UI Variable Text"',
+        '"Segoe UI"',
+        '"SF Pro Display"',
+        '"Roboto"',
+        '"Noto Sans"',
+        '"Helvetica Neue"',
+        "Arial",
+        "sans-serif",
+      ].join(", ");
+
       const baseTheme = createTheme({
         palette: {
           mode,
@@ -63,26 +87,21 @@ function App() {
           borderRadius: 5,
         },
         typography: {
-          fontFamily:
-            '"Segoe UI Variable Text", "Aptos", "Trebuchet MS", sans-serif',
+          fontFamily: bodyFontStack,
           h1: {
-            fontFamily:
-              '"Segoe UI Variable Display", "Aptos Display", "Trebuchet MS", sans-serif',
+            fontFamily: headingFontStack,
             fontWeight: 700,
           },
           h2: {
-            fontFamily:
-              '"Segoe UI Variable Display", "Aptos Display", "Trebuchet MS", sans-serif',
+            fontFamily: headingFontStack,
             fontWeight: 700,
           },
           h3: {
-            fontFamily:
-              '"Segoe UI Variable Display", "Aptos Display", "Trebuchet MS", sans-serif',
+            fontFamily: headingFontStack,
             fontWeight: 700,
           },
           h4: {
-            fontFamily:
-              '"Segoe UI Variable Display", "Aptos Display", "Trebuchet MS", sans-serif',
+            fontFamily: headingFontStack,
             fontWeight: 700,
           },
           button: {

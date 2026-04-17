@@ -28,6 +28,7 @@ interface DrivesTabProps {
   knownSecondaryAccounts: DriveReference[];
   onChangeUsageLimit: (driveKey: string, usageLimitPercent: number) => void;
   onDisconnectSecondaryDrive: (drive: Drive) => void;
+  onForgetRememberedSecondaryDrive: (account: DriveReference) => void;
 }
 
 function usageStats(drive: Drive) {
@@ -150,6 +151,7 @@ export default function DrivesTab({
   knownSecondaryAccounts,
   onChangeUsageLimit,
   onDisconnectSecondaryDrive,
+  onForgetRememberedSecondaryDrive,
 }: DrivesTabProps) {
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
   const [reconnectingDriveKey, setReconnectingDriveKey] = useState<string | null>(
@@ -237,7 +239,7 @@ export default function DrivesTab({
           <Typography variant="subtitle2">Secondary combined usage</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {secondaryDrives.length === 0
-              ? "Add secondary drives to spread uploads across more storage."
+              ? "Add a secondary drive to increase available capacity."
               : secondaryOverCap
                 ? `${formatBytes(secondaryTotals.used)} used vs ${formatBytes(secondaryTotals.allowed)} configured. Exceeds SDrive limit by ${formatBytes(secondaryTotals.used - secondaryTotals.allowed)}.`
                 : `${formatBytes(secondaryTotals.used)} of ${formatBytes(secondaryTotals.allowed)} within configured SDrive limits.`}
@@ -254,18 +256,15 @@ export default function DrivesTab({
       {secondaryUnsignedAccounts.length > 0 ? (
         <Card variant="outlined" sx={{ borderRadius: 4 }}>
           <CardContent>
-            <Typography variant="subtitle2">Remembered secondary drives</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              These drives are remembered from your primary account but are currently unsigned in.
-            </Typography>
-            <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+            <Typography variant="subtitle2">Remembered drives</Typography>
+            <Stack spacing={1} sx={{ mt: 1 }}>
               {secondaryUnsignedAccounts.map((account) => {
                 const DriveImplementation = Drives[account.provider];
                 return (
                   <Card key={createDriveKey(account.provider, account.email)} variant="outlined">
-                    <CardContent sx={{ py: 1.5 }}>
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <Avatar sx={{ bgcolor: "transparent", width: 36, height: 36 }}>
+                    <CardContent sx={{ py: 1, px: 1.25 }}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Avatar sx={{ bgcolor: "transparent", width: 30, height: 30 }}>
                           {DriveImplementation
                             ? new DriveImplementation({}).provider_icon()
                             : "?"}
@@ -275,33 +274,42 @@ export default function DrivesTab({
                             {account.email}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            Unsigned in
+                            Signed out
                           </Typography>
                         </Box>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          disabled={
-                            reconnectingDriveKey ===
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={
+                              reconnectingDriveKey ===
+                              createDriveKey(account.provider, account.email)
+                            }
+                            onClick={() => {
+                              const driveKey = createDriveKey(
+                                account.provider,
+                                account.email,
+                              );
+                              setReconnectingDriveKey(driveKey);
+                              DriveImplementation?.oauth_redirect({
+                                accountType: "secondary",
+                                hint: account.email,
+                              });
+                            }}
+                          >
+                            {reconnectingDriveKey ===
                             createDriveKey(account.provider, account.email)
-                          }
-                          onClick={() => {
-                            const driveKey = createDriveKey(
-                              account.provider,
-                              account.email,
-                            );
-                            setReconnectingDriveKey(driveKey);
-                            DriveImplementation?.oauth_redirect({
-                              accountType: "secondary",
-                              hint: account.email,
-                            });
-                          }}
-                        >
-                          {reconnectingDriveKey ===
-                          createDriveKey(account.provider, account.email)
-                            ? "Reconnecting..."
-                            : "Sign in"}
-                        </Button>
+                              ? "..."
+                              : "Sign in"}
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            onClick={() => onForgetRememberedSecondaryDrive(account)}
+                          >
+                            Forget
+                          </Button>
+                        </Stack>
                       </Stack>
                     </CardContent>
                   </Card>

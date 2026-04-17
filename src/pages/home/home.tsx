@@ -65,6 +65,7 @@ const HomePage = () => {
     refreshAllDriveDetails,
     knownSecondaryAccounts,
     disconnectSecondaryDrive,
+    forgetKnownSecondaryAccount,
   } = useSession();
   const { logicalFolders, isReady, createLogicalFolder, getLogicalFolder } =
     useLogicalFolders();
@@ -406,6 +407,7 @@ const HomePage = () => {
                   knownSecondaryAccounts={knownSecondaryAccounts}
                   onChangeUsageLimit={setDriveUsageLimit}
                   onDisconnectSecondaryDrive={disconnectSecondaryDrive}
+                  onForgetRememberedSecondaryDrive={forgetKnownSecondaryAccount}
                 />
               </Paper>
             ) : null}
@@ -437,6 +439,7 @@ const HomePage = () => {
                     knownSecondaryAccounts={knownSecondaryAccounts}
                     onChangeUsageLimit={setDriveUsageLimit}
                     onDisconnectSecondaryDrive={disconnectSecondaryDrive}
+                    onForgetRememberedSecondaryDrive={forgetKnownSecondaryAccount}
                   />
                 ) : null}
                 {selectedDesktopTab === 1 ? detailsPanel : null}

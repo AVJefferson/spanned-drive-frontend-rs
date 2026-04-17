@@ -40,6 +40,7 @@ interface SessionContextType {
   addSecondaryDrive: (newSecondaryDrive: Drive) => void;
   removeSecondaryDrive: (drive: Drive) => void;
   disconnectSecondaryDrive: (drive: Drive) => void;
+  forgetKnownSecondaryAccount: (account: KnownSecondaryAccount) => void;
   updateDrive: (drive: Drive) => void;
   setDriveUsageLimit: (driveKey: string, usageLimitPercent: number) => void;
   refreshAllDriveDetails: () => Promise<void>;
@@ -92,6 +93,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     ),
   );
   const lastSyncedPersistedSession = useRef<string | null>(null);
+  const syncingPersistedSession = useRef<string | null>(null);
   const hydratedKnownSecondaryRef = useRef<string | null>(null);
 
   const writePerDriveSettings = useCallback(
@@ -178,6 +180,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!session.primaryDrive) {
       lastSyncedPersistedSession.current = null;
+      syncingPersistedSession.current = null;
       return;
     }
 
@@ -196,15 +199,29 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
     SavePersistentSession(session);
 
-    if (lastSyncedPersistedSession.current === persistedSessionKey) {
+    if (
+      lastSyncedPersistedSession.current === persistedSessionKey ||
+      syncingPersistedSession.current === persistedSessionKey
+    ) {
       return;
     }
 
-    lastSyncedPersistedSession.current = persistedSessionKey;
+    syncingPersistedSession.current = persistedSessionKey;
     void mergeRemoteAppStorage(session.primaryDrive, {
       session: persistedSession,
       knownSecondaryAccounts: mergedKnownSecondaryAccounts,
-    });
+    })
+      .then(() => {
+        lastSyncedPersistedSession.current = persistedSessionKey;
+      })
+      .catch((error) => {
+        console.warn("Unable to sync session app storage", error);
+      })
+      .finally(() => {
+        if (syncingPersistedSession.current === persistedSessionKey) {
+          syncingPersistedSession.current = null;
+        }
+      });
   }, [knownSecondaryAccounts, session]);
 
   const setPrimaryDrive = useCallback((primaryDrive: Drive) => {
@@ -307,6 +324,30 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     );
   }, [removeSecondaryDrive]);
 
+  const forgetKnownSecondaryAccount = useCallback((account: KnownSecondaryAccount) => {
+    if (!account?.provider || !account?.email) {
+      return;
+    }
+
+    setKnownSecondaryAccounts((prev) =>
+      prev.filter(
+        (existingAccount) =>
+          createDriveKey(existingAccount.provider, existingAccount.email) !==
+          createDriveKey(account.provider, account.email),
+      ),
+    );
+
+    removeLocalStorageKey(getDriveStorageKey(account.provider, account.email));
+    void deleteSecret(createDriveRefreshSecretKey(account.provider, account.email)).catch(
+      (error) => {
+        console.warn(
+          `Unable to clear remembered refresh token for ${account.provider}:${account.email}`,
+          error,
+        );
+      },
+    );
+  }, []);
+
   const updateDrive = useCallback((drive: Drive) => {
     SaveDrive(drive);
     setSessionState((prev) => {
@@ -349,14 +390,17 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const nextDrive = {
-        ...targetDrive,
-        drive_settings: {
-          ...targetDrive.drive_settings,
-          usageLimitPercent,
-          allowed_space_usage_percent: usageLimitPercent,
+      const nextDrive = Object.assign(
+        Object.create(Object.getPrototypeOf(targetDrive)) as Drive,
+        targetDrive,
+        {
+          drive_settings: {
+            ...targetDrive.drive_settings,
+            usageLimitPercent,
+            allowed_space_usage_percent: usageLimitPercent,
+          },
         },
-      } as Drive;
+      );
 
       SaveDrive(nextDrive);
       void writePerDriveSettings(nextDrive, usageLimitPercent);
@@ -422,6 +466,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       addSecondaryDrive,
       removeSecondaryDrive,
       disconnectSecondaryDrive,
+      forgetKnownSecondaryAccount,
       updateDrive,
       setDriveUsageLimit,
       refreshAllDriveDetails,
@@ -434,6 +479,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       addSecondaryDrive,
       removeSecondaryDrive,
       disconnectSecondaryDrive,
+      forgetKnownSecondaryAccount,
       updateDrive,
       setDriveUsageLimit,
       refreshAllDriveDetails,

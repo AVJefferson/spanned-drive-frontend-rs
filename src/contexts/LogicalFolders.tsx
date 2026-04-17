@@ -201,6 +201,8 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
 
     void mergeRemoteAppStorage(session.primaryDrive, {
       logicalFolders,
+    }).catch((error) => {
+      console.warn("Unable to sync logical folders to app storage", error);
     });
   }, [hydratedDriveKey, logicalFolders, session.primaryDrive]);
 

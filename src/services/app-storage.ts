@@ -109,10 +109,10 @@ export async function mergeRemoteAppStorage(
   partial: Partial<RemoteAppStorageState>,
 ) {
   const current = await readRemoteAppStorage(primaryDrive);
-  const nextKnownSecondaryAccounts = normalizeKnownSecondaryAccounts([
-    ...current.knownSecondaryAccounts,
-    ...(partial.knownSecondaryAccounts || []),
-  ]);
+  const nextKnownSecondaryAccounts =
+    partial.knownSecondaryAccounts !== undefined
+      ? normalizeKnownSecondaryAccounts(partial.knownSecondaryAccounts)
+      : normalizeKnownSecondaryAccounts(current.knownSecondaryAccounts);
 
   const next: RemoteAppStorageState = {
     ...current,
@@ -130,11 +130,7 @@ export async function mergeRemoteAppStorage(
     return next;
   }
 
-  try {
-    await primaryDrive.write_app_storage_json(APP_STORAGE_FILE, next);
-  } catch (error) {
-    console.warn("Unable to persist app storage to primary drive", error);
-  }
+  await primaryDrive.write_app_storage_json(APP_STORAGE_FILE, next);
 
   return next;
 }

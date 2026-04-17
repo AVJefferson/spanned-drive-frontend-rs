@@ -8,4 +8,4 @@ script = ""
 [[actions]]
 name = "Run"
 icon = "run"
-command = "cmd /c \"npm run dev\""
+command = "npm run dev"

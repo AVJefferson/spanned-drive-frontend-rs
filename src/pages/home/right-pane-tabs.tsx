@@ -11,8 +11,9 @@ import {
   Select,
   Stack,
   Typography,
+  Link as MuiLink,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
 import { useRuntime } from "../../contexts/RuntimeContext";
@@ -192,6 +193,31 @@ export function SettingsTab() {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Platform: {runtime.platform}
+          </Typography>
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined">
+        <CardContent>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            About
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Developer: A V Jefferson
+          </Typography>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+            <MuiLink component={Link} to="/privacy" underline="hover">
+              Privacy Policy
+            </MuiLink>
+            <Typography component="span" variant="body2" color="text.disabled">
+              ·
+            </Typography>
+            <MuiLink component={Link} to="/terms" underline="hover">
+              Terms of Service
+            </MuiLink>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+            Built with love ❤️.
           </Typography>
         </CardContent>
       </Card>

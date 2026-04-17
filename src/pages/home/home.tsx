@@ -262,7 +262,7 @@ const HomePage = () => {
       title="Explorer error"
       message="The file explorer failed to render. Retry this section or reload the app."
     >
-      <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 }, }}>
+      <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 } }}>
         {!isReady ? (
           <Typography color="text.secondary">Loading your logical folders...</Typography>
         ) : (

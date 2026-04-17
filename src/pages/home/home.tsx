@@ -15,17 +15,22 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useLogicalFolders } from "../../contexts/LogicalFolders";
 import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
 import { useSession } from "../../contexts/SessionContext";
 import { useTasksActions } from "../../contexts/TasksContext";
-import { createDriveKey } from "../../utils/ids";
+import { createDriveKey, createId } from "../../utils/ids";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
+import { fetchLogicalFolderListing } from "../../services/drive-manager/listing";
 
-import { CreateLogicalFolderDialog, DestinationDialog } from "./home-dialogs";
+import {
+  CreateLogicalFolderDialog,
+  DeleteLogicalFolderDialog,
+  DestinationDialog,
+} from "./home-dialogs";
 import { HomeExplorer } from "./home-explorer";
 import {
   InfoTab,
@@ -55,8 +60,24 @@ function InfoTabIcon() {
   return "i";
 }
 
+const HOME_PATH_SESSION_KEY = "sdrive.home.path";
+
+function encodePathSegment(value: string) {
+  return encodeURIComponent(value);
+}
+
+function decodePathSegment(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 const HomePage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const {
@@ -67,8 +88,15 @@ const HomePage = () => {
     disconnectSecondaryDrive,
     forgetKnownSecondaryAccount,
   } = useSession();
-  const { logicalFolders, isReady, createLogicalFolder, getLogicalFolder } =
-    useLogicalFolders();
+  const {
+    logicalFolders,
+    isReady,
+    createLogicalFolder,
+    replaceLogicalFolder,
+    getLogicalFolder,
+    deleteLogicalFolder,
+    updateLogicalFolderSettings,
+  } = useLogicalFolders();
   const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove } = useTasksActions();
 
   const [selectedLogicalFolderId, setSelectedLogicalFolderId] = useState<string | null>(
@@ -87,10 +115,24 @@ const HomePage = () => {
   const [copyMoveMode, setCopyMoveMode] = useState<"copy" | "move" | null>(null);
   const [destinationParentId, setDestinationParentId] = useState<string | null>(null);
   const [mobileInfoOpen, setMobileInfoOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<"forget" | "delete-all">("forget");
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [isDeletingLogicalDrive, setIsDeletingLogicalDrive] = useState(false);
+  const [deleteLogicalDriveError, setDeleteLogicalDriveError] = useState("");
+  const [isRefreshingListing, setIsRefreshingListing] = useState(false);
+  const [listingPageToken, setListingPageToken] = useState<string | undefined>(
+    undefined,
+  );
+  const [listingNextPageToken, setListingNextPageToken] = useState<
+    string | undefined
+  >(undefined);
+  const [listingHasMore, setListingHasMore] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const refreshedDriveSetRef = useRef<string | null>(null);
+  const applyingPathRef = useRef(false);
 
   useEffect(() => {
     folderInputRef.current?.setAttribute("webkitdirectory", "");
@@ -99,9 +141,12 @@ const HomePage = () => {
 
   useEffect(() => {
     if (!session.primaryDrive) {
+      if (location.search) {
+        sessionStorage.setItem(HOME_PATH_SESSION_KEY, location.search);
+      }
       navigate("/signin");
     }
-  }, [navigate, session.primaryDrive]);
+  }, [location.search, navigate, session.primaryDrive]);
 
   useEffect(() => {
     const driveSetSignature = [
@@ -126,6 +171,7 @@ const HomePage = () => {
   const activeLogicalFolder = selectedLogicalFolderId
     ? getLogicalFolder(selectedLogicalFolderId)
     : undefined;
+  const isLogicalDriveLocked = activeLogicalFolder?.status === "partially_deleted";
   const activeLogicalFolderItems = activeLogicalFolder?.items || [];
   const selectedEntry = activeLogicalFolderItems.find(
     (entry) => entry.id === selectedEntryId,
@@ -137,6 +183,14 @@ const HomePage = () => {
       ...session.secondaryDrives,
     ],
     [session.primaryDrive, session.secondaryDrives],
+  );
+
+  const getDriveByKey = useCallback(
+    (driveKey: string) =>
+      allAvailableDrives.find(
+        (drive) => createDriveKey(drive.provider, drive.email) === driveKey,
+      ),
+    [allAvailableDrives],
   );
 
   const breadcrumbs = useMemo(() => {
@@ -155,6 +209,141 @@ const HomePage = () => {
 
     return items;
   }, [activeLogicalFolder, activeLogicalFolderItems, currentParentId]);
+
+  useEffect(() => {
+    if (!session.primaryDrive || !isReady) {
+      return;
+    }
+
+    if (searchParams.get("path")) {
+      return;
+    }
+
+    const rememberedSearch = sessionStorage.getItem(HOME_PATH_SESSION_KEY);
+    if (!rememberedSearch?.startsWith("?")) {
+      return;
+    }
+
+    const rememberedParams = new URLSearchParams(rememberedSearch.slice(1));
+    const rememberedPath = rememberedParams.get("path");
+    if (!rememberedPath) {
+      sessionStorage.removeItem(HOME_PATH_SESSION_KEY);
+      return;
+    }
+
+    applyingPathRef.current = true;
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("path", rememberedPath);
+      return next;
+    });
+    sessionStorage.removeItem(HOME_PATH_SESSION_KEY);
+  }, [isReady, searchParams, session.primaryDrive, setSearchParams]);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    const rawPath = searchParams.get("path");
+    if (!rawPath) {
+      return;
+    }
+
+    const pathParts = rawPath
+      .split("/")
+      .map((segment) => decodePathSegment(segment).trim())
+      .filter(Boolean);
+    if (pathParts.length === 0) {
+      return;
+    }
+
+    const driveName = pathParts[0];
+    const targetLogicalFolder = logicalFolders.find(
+      (folder) => folder.name === driveName,
+    );
+
+    if (!targetLogicalFolder) {
+      setSelectedLogicalFolderId(null);
+      setCurrentParentId(null);
+      setSelectedEntryId(null);
+      applyingPathRef.current = false;
+      return;
+    }
+
+    let pointerParentId: string | null = null;
+    const childPath = pathParts.slice(1);
+    for (const segment of childPath) {
+      const childFolder = (targetLogicalFolder.items || []).find(
+        (entry) =>
+          entry.kind === "folder" &&
+          entry.parentId === pointerParentId &&
+          entry.name === segment,
+      );
+      if (!childFolder) {
+        break;
+      }
+      pointerParentId = childFolder.id;
+    }
+
+    setSelectedLogicalFolderId(targetLogicalFolder.id);
+    setCurrentParentId(pointerParentId);
+    setSelectedEntryId(null);
+    applyingPathRef.current = false;
+  }, [isReady, logicalFolders, searchParams]);
+
+  useEffect(() => {
+    if (!isReady || applyingPathRef.current) {
+      return;
+    }
+
+    const currentPath = searchParams.get("path") || "";
+    if (!selectedLogicalFolderId) {
+      if (currentPath) {
+        setSearchParams((current) => {
+          const next = new URLSearchParams(current);
+          next.delete("path");
+          return next;
+        });
+      }
+      return;
+    }
+
+    const logicalFolder = getLogicalFolder(selectedLogicalFolderId);
+    if (!logicalFolder) {
+      return;
+    }
+
+    const folderPathNames = [logicalFolder.name];
+    let pointer = currentParentId
+      ? logicalFolder.items.find((entry) => entry.id === currentParentId)
+      : undefined;
+    const segments: string[] = [];
+    while (pointer) {
+      segments.unshift(pointer.name);
+      pointer = pointer.parentId
+        ? logicalFolder.items.find((entry) => entry.id === pointer?.parentId)
+        : undefined;
+    }
+    folderPathNames.push(...segments);
+    const nextPath = folderPathNames.map(encodePathSegment).join("/");
+    if (nextPath === currentPath) {
+      return;
+    }
+
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("path", nextPath);
+      return next;
+    });
+  }, [
+    currentParentId,
+    getLogicalFolder,
+    isReady,
+    searchParams,
+    selectedLogicalFolderId,
+    setSearchParams,
+  ]);
 
   const destinationOptions = useMemo(
     () => {
@@ -175,6 +364,161 @@ const HomePage = () => {
     },
     [activeLogicalFolder, activeLogicalFolderItems, selectedEntryId],
   );
+
+  const activeLogicalFolderId = activeLogicalFolder?.id;
+
+  useEffect(() => {
+    setListingPageToken(undefined);
+    setListingNextPageToken(undefined);
+    setListingHasMore(false);
+  }, [activeLogicalFolderId, currentParentId]);
+
+  useEffect(() => {
+    if (!activeLogicalFolderId || !isReady) {
+      return;
+    }
+
+    const folderAtStart = getLogicalFolder(activeLogicalFolderId);
+    if (!folderAtStart) {
+      return;
+    }
+
+    let cancelled = false;
+    setIsRefreshingListing(true);
+    void fetchLogicalFolderListing({
+      logicalFolder: folderAtStart,
+      parentId: currentParentId,
+      pageToken: listingPageToken,
+      pageSize: 100,
+      settings: folderAtStart.listing!,
+      getDriveByKey,
+    })
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+
+        replaceLogicalFolder(activeLogicalFolderId, (folder) => {
+          const existingChildren = (folder.items || []).filter(
+            (entry) => entry.parentId === currentParentId,
+          );
+
+          const keyedByProviderItemId = new Map(
+            existingChildren
+              .filter((entry) => (entry.placements || []).length > 0)
+              .map((entry) => [
+                `${entry.placements[0].driveKey}::${entry.placements[0].itemId}`,
+                entry,
+              ]),
+          );
+          const keyedByName = new Map(
+            existingChildren.map((entry) => [
+              `${entry.name}::${entry.kind}`,
+              entry,
+            ]),
+          );
+
+          const refreshedChildren = result.mergedEntries.map((entry) => {
+            const providerPlacement = entry.placements?.[0];
+            const providerKey = providerPlacement
+              ? `${providerPlacement.driveKey}::${providerPlacement.itemId}`
+              : "";
+            const existingByProvider = providerKey
+              ? keyedByProviderItemId.get(providerKey)
+              : undefined;
+            const existing =
+              existingByProvider || keyedByName.get(`${entry.name}::${entry.kind}`);
+            return {
+              ...entry,
+              id: existing?.id || createId("logical-entry"),
+              createdAt: existing?.createdAt || Date.now(),
+            };
+          });
+
+          const signatureOf = (entries: typeof refreshedChildren) =>
+            entries
+              .map(
+                (entry) =>
+                  `${entry.id}|${entry.name}|${entry.kind}|${entry.size}|${entry.updatedAt}|${entry.corrupted ? 1 : 0}|${entry.duplicateCandidate ? 1 : 0}`,
+              )
+              .sort()
+              .join("\n");
+          const existingSignature = signatureOf(existingChildren);
+          const refreshedSignature = signatureOf(refreshedChildren);
+
+          if (!listingPageToken && existingSignature === refreshedSignature) {
+            return folder;
+          }
+
+          const retained = (folder.items || []).filter((entry) => {
+            if (entry.parentId !== currentParentId) {
+              return true;
+            }
+            if (listingPageToken) {
+              return true;
+            }
+            return false;
+          });
+
+          const appendedChildren = listingPageToken
+            ? [
+                ...existingChildren,
+                ...refreshedChildren.filter(
+                  (entry) =>
+                    !existingChildren.some((existing) => {
+                      const existingPlacement = existing.placements?.[0];
+                      const entryPlacement = entry.placements?.[0];
+                      if (
+                        existingPlacement &&
+                        entryPlacement &&
+                        existingPlacement.driveKey === entryPlacement.driveKey &&
+                        existingPlacement.itemId === entryPlacement.itemId
+                      ) {
+                        return true;
+                      }
+                      return (
+                        existing.name === entry.name &&
+                        existing.kind === entry.kind
+                      );
+                    }),
+                ),
+              ]
+            : refreshedChildren;
+
+          return {
+            ...folder,
+            items: [...retained, ...appendedChildren],
+          };
+        });
+
+        const nextToken =
+          result.pages.length > 0
+            ? result.pages[result.pages.length - 1].nextPageToken
+            : undefined;
+        setListingNextPageToken(nextToken);
+        setListingHasMore(Boolean(nextToken));
+      })
+      .catch((error) => {
+        console.warn("Unable to refresh live listing", error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsRefreshingListing(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeLogicalFolderId,
+    currentParentId,
+    getDriveByKey,
+    getLogicalFolder,
+    isReady,
+    listingPageToken,
+    replaceLogicalFolder,
+  ]);
 
   if (!session.primaryDrive) {
     return null;
@@ -243,8 +587,37 @@ const HomePage = () => {
     }
   };
 
+  const handleDeleteLogicalDrive = async () => {
+    if (!activeLogicalFolder) {
+      return;
+    }
+
+    setIsDeletingLogicalDrive(true);
+    setDeleteLogicalDriveError("");
+    try {
+      const result = await deleteLogicalFolder(activeLogicalFolder.id, deleteMode);
+      if (!result.success) {
+        setDeleteLogicalDriveError(
+          `Failed backends: ${result.failedBackends.join(", ")}. Retry delete-all or forget this logical drive.`,
+        );
+        return;
+      }
+      setDeleteDialogOpen(false);
+      setDeleteConfirmName("");
+      setSelectedLogicalFolderId(null);
+      setCurrentParentId(null);
+      setSelectedEntryId(null);
+    } catch (error) {
+      setDeleteLogicalDriveError(
+        error instanceof Error ? error.message : "Unable to delete logical drive.",
+      );
+    } finally {
+      setIsDeletingLogicalDrive(false);
+    }
+  };
+
   const enqueueSelectedUpload = (files: File[]) => {
-    if (!activeLogicalFolder || files.length === 0) {
+    if (!activeLogicalFolder || files.length === 0 || isLogicalDriveLocked) {
       return;
     }
 
@@ -257,22 +630,42 @@ const HomePage = () => {
         selectedEntry={selectedEntry}
         logicalFolder={activeLogicalFolder}
         onDelete={() => {
+          if (isLogicalDriveLocked) {
+            return;
+          }
           if (window.confirm(`Delete ${selectedEntry.name}?`)) {
             enqueueDelete(activeLogicalFolder.id, selectedEntry.id);
             resetSelection();
           }
         }}
         onCopy={() => {
+          if (isLogicalDriveLocked) {
+            return;
+          }
           setCopyMoveMode("copy");
           setDestinationParentId(currentParentId);
         }}
         onMove={() => {
+          if (isLogicalDriveLocked) {
+            return;
+          }
           setCopyMoveMode("move");
           setDestinationParentId(currentParentId);
         }}
       />
     ) : activeLogicalFolder ? (
-      <LogicalFolderInfoTab logicalFolder={activeLogicalFolder} />
+      <LogicalFolderInfoTab
+        logicalFolder={activeLogicalFolder}
+        onDeleteLogicalDrive={() => {
+          setDeleteMode(activeLogicalFolder.status === "partially_deleted" ? "delete-all" : "forget");
+          setDeleteConfirmName("");
+          setDeleteLogicalDriveError("");
+          setDeleteDialogOpen(true);
+        }}
+        onUpdateSettings={(next) => {
+          updateLogicalFolderSettings(activeLogicalFolder.id, next);
+        }}
+      />
     ) : (
       <SettingsTab />
     );
@@ -292,6 +685,8 @@ const HomePage = () => {
             activeLogicalFolder={activeLogicalFolder}
             currentParentId={currentParentId}
             selectedEntryId={selectedEntryId}
+            isRefreshingListing={isRefreshingListing}
+            hasMoreEntries={listingHasMore}
             breadcrumbs={breadcrumbs}
             onOpenLogicalFolder={openLogicalFolder}
             onBackToRoot={() => {
@@ -310,6 +705,11 @@ const HomePage = () => {
               setSelectedDriveKeys([]);
               setCreateError("");
               setCreateDialogOpen(true);
+            }}
+            onLoadMore={() => {
+              if (listingNextPageToken && !isRefreshingListing) {
+                setListingPageToken(listingNextPageToken);
+              }
             }}
           />
         )}
@@ -334,6 +734,7 @@ const HomePage = () => {
         {selectedMobileTab === "folders" || !isMobile ? (
           <Button
             variant="contained"
+            disabled={Boolean(isLogicalDriveLocked && selectedLogicalFolderId)}
             onClick={(event) => {
               if (!selectedLogicalFolderId) {
                 setCreateName("");
@@ -490,6 +891,22 @@ const HomePage = () => {
           setCopyMoveMode(null);
           resetSelection();
         }}
+      />
+
+      <DeleteLogicalFolderDialog
+        open={deleteDialogOpen && Boolean(activeLogicalFolder)}
+        logicalFolderName={activeLogicalFolder?.name || ""}
+        deleting={isDeletingLogicalDrive}
+        failureMessage={deleteLogicalDriveError || undefined}
+        mode={deleteMode}
+        confirmName={deleteConfirmName}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setDeleteLogicalDriveError("");
+        }}
+        onModeChange={setDeleteMode}
+        onConfirmNameChange={setDeleteConfirmName}
+        onConfirm={handleDeleteLogicalDrive}
       />
 
       <Dialog

@@ -45,6 +45,11 @@ export interface DriveItemMetadata {
 
 export interface DriveUploadResult extends DriveItemMetadata {}
 
+export interface DriveListChildrenResponse {
+  items: DriveItemMetadata[];
+  nextPageToken?: string;
+}
+
 export interface DriveSnapshot extends DriveReference {
   providerLabel: string;
   provider_icon: () => JSX.Element;
@@ -65,6 +70,10 @@ export interface DriveSnapshot extends DriveReference {
     file: File,
     parentId: string,
   ) => Promise<DriveUploadResult>;
+  list_children: (
+    parentId: string,
+    options?: { pageToken?: string; pageSize?: number },
+  ) => Promise<DriveListChildrenResponse>;
   delete_item: (itemId: string) => Promise<void>;
   copy_item: (
     itemId: string,

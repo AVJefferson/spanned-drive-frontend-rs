@@ -3,6 +3,7 @@ export const STORAGE_KEYS = {
   settings: "sdrive.settings",
   logicalFolders: "sdrive.logical-folders",
   tasks: "sdrive.tasks",
+  taskCheckpoints: "sdrive.task-checkpoints",
   oauthParams: "sdrive.oauth-params",
   remoteAppStateCache: "sdrive.remote-app-state-cache",
 } as const;
@@ -73,6 +74,7 @@ export function clearSessionScopedStorage() {
       key === STORAGE_KEYS.session ||
       key === STORAGE_KEYS.logicalFolders ||
       key === STORAGE_KEYS.tasks ||
+      key === STORAGE_KEYS.taskCheckpoints ||
       key === STORAGE_KEYS.oauthParams ||
       key === STORAGE_KEYS.remoteAppStateCache ||
       key === "session"

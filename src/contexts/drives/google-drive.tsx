@@ -13,6 +13,7 @@ import {
   createGoogleDriveFolder,
   deleteGoogleDriveItem,
   fetchGoogleDriveFileMetadata,
+  listGoogleDriveChildren,
   readGoogleAppStorageJson,
   uploadGoogleDriveFile,
   writeGoogleAppStorageJson,
@@ -185,6 +186,13 @@ export class GoogleDrive implements Drive {
 
   async upload_file(file: File, parentId: string): Promise<DriveUploadResult> {
     return uploadGoogleDriveFile(this, file, parentId);
+  }
+
+  async list_children(
+    parentId: string,
+    options?: { pageToken?: string; pageSize?: number },
+  ) {
+    return listGoogleDriveChildren(this, parentId, options);
   }
 
   async delete_item(itemId: string) {

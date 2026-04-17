@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { Drives, type Drive, type DriveReference } from "../../contexts/Drive";
 import { createDriveKey } from "../../utils/ids";
 import { formatBytes, formatPercent } from "../../utils/formatting";
+import { getEffectiveLimitPercent } from "../../services/drive-manager/quota-guard";
 
 interface DrivesTabProps {
   primaryDrive: Drive;
@@ -35,10 +36,12 @@ function usageStats(drive: Drive) {
   const total = Number(drive.drive_details.totalSpace || 0);
   const used = Number(drive.drive_details.usedSpace || 0);
   const limitPercent =
-    Number(
+    getEffectiveLimitPercent(
+      Number(
       drive.drive_settings.usageLimitPercent ??
         drive.drive_settings.allowed_space_usage_percent,
-    ) || 85;
+      ) || 85,
+    );
   const allowed = total ? (total * limitPercent) / 100 : 0;
   const usableRemaining = allowed ? Math.max(allowed - used, 0) : 0;
 

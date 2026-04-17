@@ -24,6 +24,8 @@ interface HomeExplorerProps {
   activeLogicalFolder?: LogicalFolder;
   currentParentId: string | null;
   selectedEntryId: string | null;
+  isRefreshingListing?: boolean;
+  hasMoreEntries?: boolean;
   breadcrumbs: LogicalEntry[];
   onOpenLogicalFolder: (logicalFolderId: string) => void;
   onBackToRoot: () => void;
@@ -31,6 +33,7 @@ interface HomeExplorerProps {
   onOpenEntry: (entry: LogicalEntry) => void;
   onOpenInfo: (entry: LogicalEntry) => void;
   onCreateLogicalFolder: () => void;
+  onLoadMore?: () => void;
 }
 
 function folderIcon() {
@@ -89,6 +92,8 @@ const ExplorerEntryRow = memo(function ExplorerEntryRow({
                 {entry.kind === "folder"
                   ? `${directChildrenCount} direct items`
                   : formatBytes(entry.size)}
+                {entry.duplicateCandidate ? " · duplicate candidate" : ""}
+                {entry.corrupted ? " · corrupted" : ""}
               </Typography>
             </Box>
             {isBusy ? <CircularProgress size={18} aria-label="Entry operation in progress" /> : null}
@@ -111,6 +116,8 @@ export function HomeExplorer({
   activeLogicalFolder,
   currentParentId,
   selectedEntryId,
+  isRefreshingListing = false,
+  hasMoreEntries = false,
   breadcrumbs,
   onOpenLogicalFolder,
   onBackToRoot,
@@ -118,6 +125,7 @@ export function HomeExplorer({
   onOpenEntry,
   onOpenInfo,
   onCreateLogicalFolder,
+  onLoadMore,
 }: HomeExplorerProps) {
   const { tasks } = useTasksState();
   const activeTasks = useMemo(
@@ -283,6 +291,16 @@ export function HomeExplorer({
           </CardContent>
         </Card>
       ) : null}
+      {isRefreshingListing ? (
+        <Card variant="outlined">
+          <CardContent sx={{ py: 1.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Refreshing from backend drives...
+            </Typography>
+            <LinearProgress sx={{ mt: 1 }} />
+          </CardContent>
+        </Card>
+      ) : null}
       <Stack spacing={1}>
         <Typography variant="h4">{activeLogicalFolder.name}</Typography>
         <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
@@ -325,6 +343,11 @@ export function HomeExplorer({
               onOpenInfo={onOpenInfo}
             />
           ))}
+          {hasMoreEntries ? (
+            <Button variant="outlined" onClick={() => onLoadMore?.()}>
+              Load more
+            </Button>
+          ) : null}
         </Stack>
       )}
     </Stack>

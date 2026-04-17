@@ -19,6 +19,14 @@ import {
   writeLocalStorageJson,
 } from "../services/browser/storage";
 import { createDriveKey, createId } from "../utils/ids";
+import { buildDriveCandidates, reserveDriveBytes } from "../services/drive-manager/quota-guard";
+import {
+  listTaskCheckpoints,
+  removeTaskCheckpoint,
+  saveTaskCheckpoint,
+  updateTaskCheckpointMicrotask,
+} from "../services/drive-manager/executor";
+import { planUploadPlacements } from "../services/drive-manager/planner";
 
 type TaskStatus = "queued" | "running" | "completed" | "failed";
 type TaskKind = "upload" | "delete" | "copy" | "move";
@@ -206,6 +214,24 @@ function withUpdatedTask(task: TaskRecord, updater: (task: TaskRecord) => TaskRe
   };
 }
 
+function toTaskCheckpoint(task: TaskRecord) {
+  return {
+    taskId: task.id,
+    kind: task.kind,
+    resumability: (task.kind === "upload" ? "machine-bound" : "local-only") as
+      | "machine-bound"
+      | "local-only",
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    microtasks: task.microtasks.map((microtask) => ({
+      id: microtask.id,
+      kind: microtask.kind,
+      status: microtask.status,
+      error: microtask.error,
+    })),
+  };
+}
+
 function updateDriveUsage(drive: Drive, delta: number) {
   const usedSpace = Number(drive.drive_details.usedSpace || 0) + delta;
   const totalSpace = Number(drive.drive_details.totalSpace || 0);
@@ -235,6 +261,37 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const logicalFoldersRef = useRef(logicalFolders);
 
   useEffect(() => {
+    const checkpoints = listTaskCheckpoints();
+    if (checkpoints.length === 0) {
+      return;
+    }
+    setTasks((current) =>
+      current.map((task) => {
+        const checkpoint = checkpoints.find((item) => item.taskId === task.id);
+        if (!checkpoint) {
+          return task;
+        }
+        return {
+          ...task,
+          microtasks: task.microtasks.map((microtask) => {
+            const checkpointMicrotask = checkpoint.microtasks.find(
+              (item) => item.id === microtask.id,
+            );
+            if (!checkpointMicrotask) {
+              return microtask;
+            }
+            return {
+              ...microtask,
+              status: checkpointMicrotask.status,
+              error: checkpointMicrotask.error,
+            };
+          }),
+        };
+      }),
+    );
+  }, []);
+
+  useEffect(() => {
     sessionRef.current = session;
   }, [session]);
 
@@ -244,6 +301,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     writeLocalStorageJson(STORAGE_KEYS.tasks, tasks);
+    tasks.forEach((task) => {
+      if (task.status === "completed") {
+        removeTaskCheckpoint(task.id);
+        return;
+      }
+      saveTaskCheckpoint(toTaskCheckpoint(task));
+    });
   }, [tasks]);
 
   const getDriveByKey = useCallback((driveKey: string) => {
@@ -259,36 +323,15 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   const chooseUploadDrive = useCallback(
     (logicalFolder: LogicalFolder, fileSize: number) => {
-      const candidates = logicalFolder.backends
-        .map((backend) => {
-          const drive = getDriveByKey(backend.driveKey);
-          if (!drive) {
-            return null;
-          }
-
-          const totalSpace = Number(drive.drive_details.totalSpace || 0);
-          const usedSpace = Number(drive.drive_details.usedSpace || 0);
-          const limitPercent =
-            Number(
-              drive.drive_settings.usageLimitPercent ??
-                drive.drive_settings.allowed_space_usage_percent ??
-                backend.usageLimitPercent,
-            ) || 85;
-
-          const effectiveLimit = totalSpace ? (totalSpace * limitPercent) / 100 : 0;
-          const available = totalSpace ? Math.max(effectiveLimit - usedSpace, 0) : 0;
-
-          return {
-            backend,
-            drive,
-            available,
-          };
-        })
-        .filter(Boolean) as {
-        backend: LogicalFolder["backends"][number];
-        drive: Drive;
-        available: number;
-      }[];
+      const candidates = buildDriveCandidates(logicalFolder, getDriveByKey).map(
+        (candidate) => ({
+          backend: logicalFolder.backends.find(
+            (backend) => backend.driveKey === candidate.driveKey,
+          )!,
+          drive: candidate.drive,
+          available: candidate.availableBytes,
+        }),
+      );
 
       candidates.sort((left, right) => right.available - left.available);
       return candidates.find((candidate) => candidate.available >= fileSize) || null;
@@ -392,6 +435,16 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         throw new Error("No backend drive has enough usable space for this upload");
       }
 
+      const candidates = buildDriveCandidates(logicalFolder, getDriveByKey);
+      const reservation = reserveDriveBytes(
+        selectedDrive.backend.driveKey,
+        file.size,
+        candidates,
+      );
+      if (!reservation) {
+        throw new Error("Quota reservation failed for this upload");
+      }
+
       const parentId =
         microtask.entry.parentId === null
           ? selectedDrive.backend.rootFolderId
@@ -403,37 +456,41 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         throw new Error("Unable to determine destination folder on the backend drive");
       }
 
-      const uploadedFile = await selectedDrive.drive.upload_file(file, parentId);
-      replaceLogicalFolder(microtask.logicalFolderId, (folder) => ({
-        ...folder,
-        items: [
-          ...folder.items,
-          {
-            id: microtask.entry.id,
-            name: microtask.entry.name,
-            kind: "file",
-            parentId: microtask.entry.parentId,
-            size: microtask.entry.size,
-            mimeType: microtask.entry.mimeType,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            placements: [
-              {
-                provider: selectedDrive.backend.provider,
-                email: selectedDrive.backend.email,
-                driveKey: selectedDrive.backend.driveKey,
-                itemId: uploadedFile.id,
-                parentId,
-                rootFolderId: selectedDrive.backend.rootFolderId,
-              },
-            ],
-          },
-        ],
-      }));
+      try {
+        const uploadedFile = await selectedDrive.drive.upload_file(file, parentId);
+        replaceLogicalFolder(microtask.logicalFolderId, (folder) => ({
+          ...folder,
+          items: [
+            ...folder.items,
+            {
+              id: microtask.entry.id,
+              name: microtask.entry.name,
+              kind: "file",
+              parentId: microtask.entry.parentId,
+              size: microtask.entry.size,
+              mimeType: microtask.entry.mimeType,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              placements: [
+                {
+                  provider: selectedDrive.backend.provider,
+                  email: selectedDrive.backend.email,
+                  driveKey: selectedDrive.backend.driveKey,
+                  itemId: uploadedFile.id,
+                  parentId,
+                  rootFolderId: selectedDrive.backend.rootFolderId,
+                },
+              ],
+            },
+          ],
+        }));
 
-      updateDrive(updateDriveUsage(selectedDrive.drive, file.size));
+        updateDrive(updateDriveUsage(selectedDrive.drive, file.size));
+      } finally {
+        reservation.release();
+      }
     },
-    [chooseUploadDrive, replaceLogicalFolder, updateDrive],
+    [chooseUploadDrive, getDriveByKey, replaceLogicalFolder, updateDrive],
   );
 
   const applyDeletePlacement = useCallback(
@@ -614,6 +671,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
               : candidate,
           ),
         );
+        updateTaskCheckpointMicrotask(task.id, microtask.id, {
+          status: "running",
+          error: undefined,
+        });
 
         try {
           await runMicrotask(microtask);
@@ -634,6 +695,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
                 : candidate,
             ),
           );
+          updateTaskCheckpointMicrotask(task.id, microtask.id, {
+            status: "completed",
+            error: undefined,
+          });
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Task microtask failed";
@@ -658,6 +723,10 @@ export function TasksProvider({ children }: { children: ReactNode }) {
                 : candidate,
             ),
           );
+          updateTaskCheckpointMicrotask(task.id, microtask.id, {
+            status: "failed",
+            error: message,
+          });
 
           runningRef.current = false;
           return;
@@ -692,6 +761,31 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     (logicalFolderId: string, parentId: string | null, files: File[]) => {
       const logicalFolder = getLogicalFolder(logicalFolderId);
       if (!logicalFolder || files.length === 0) {
+        return;
+      }
+
+      try {
+        planUploadPlacements({
+          logicalFolder,
+          files,
+          parentId,
+          getDriveByKey,
+        });
+      } catch (error) {
+        enqueueTask({
+          id: createId("task"),
+          kind: "upload",
+          title: `Upload ${files.length} item${files.length === 1 ? "" : "s"}`,
+          status: "failed",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          progress: 0,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unable to allocate upload plan",
+          microtasks: [],
+        });
         return;
       }
 
@@ -811,7 +905,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         microtasks,
       });
     },
-    [enqueueTask, getLogicalFolder],
+    [enqueueTask, getDriveByKey, getLogicalFolder],
   );
 
   const buildDeleteTask = useCallback(
@@ -1060,9 +1154,12 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearFinishedTasks = useCallback(() => {
-    setTasks((current) =>
-      current.filter((task) => task.status !== "completed"),
-    );
+    setTasks((current) => {
+      current
+        .filter((task) => task.status === "completed")
+        .forEach((task) => removeTaskCheckpoint(task.id));
+      return current.filter((task) => task.status !== "completed");
+    });
   }, []);
 
   const stateValue = useMemo<TasksContextValue>(

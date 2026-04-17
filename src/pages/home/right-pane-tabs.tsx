@@ -10,12 +10,21 @@ import {
   MenuItem,
   Select,
   Stack,
+  TextField,
   Typography,
   Link as MuiLink,
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 
-import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
+import type {
+  LogicalEntry,
+  LogicalFolder,
+  LogicalDrivePackingMode,
+} from "../../contexts/LogicalFolderTypes";
+import {
+  MAX_CHUNK_SIZE_BYTES,
+  MIN_CHUNK_SIZE_BYTES,
+} from "../../contexts/LogicalFolderTypes";
 import { useRuntime } from "../../contexts/RuntimeContext";
 import { useSession } from "../../contexts/SessionContext";
 import { useSettings } from "../../contexts/SettingsContext";
@@ -33,9 +42,27 @@ interface InfoTabProps {
 
 export function LogicalFolderInfoTab({
   logicalFolder,
+  onDeleteLogicalDrive,
+  onUpdateSettings,
 }: {
   logicalFolder: LogicalFolder;
+  onDeleteLogicalDrive: () => void;
+  onUpdateSettings: (next: {
+    packing?: {
+      mode?: LogicalDrivePackingMode;
+      chunkSizeBytes?: number;
+    };
+    listing?: {
+      mergeMode?: "combined" | "drive-priority";
+      sortBy?: "name" | "size" | "extension";
+      sortDirection?: "asc" | "desc";
+    };
+  }) => void;
 }) {
+  const chunkSizeMB = Math.round((logicalFolder.packing?.chunkSizeBytes || 0) / (1024 * 1024));
+  const minChunkSizeMB = Math.round(MIN_CHUNK_SIZE_BYTES / (1024 * 1024));
+  const maxChunkSizeMB = Math.round(MAX_CHUNK_SIZE_BYTES / (1024 * 1024));
+
   return (
     <Stack spacing={2}>
       <Box>
@@ -50,6 +77,11 @@ export function LogicalFolderInfoTab({
           {logicalFolder.backends.length === 1 ? "" : "s"} ·{" "}
           {(logicalFolder.items || []).length} total items
         </Typography>
+        {logicalFolder.status === "partially_deleted" ? (
+          <Typography variant="body2" color="warning.main" sx={{ mt: 0.75 }}>
+            Partial delete in progress. This logical drive is read-only until cleanup succeeds.
+          </Typography>
+        ) : null}
       </Box>
 
       <Card variant="outlined">
@@ -89,6 +121,127 @@ export function LogicalFolderInfoTab({
           ))}
         </Stack>
       </Box>
+
+      <Card variant="outlined">
+        <CardContent>
+          <Stack spacing={2}>
+            <Typography variant="subtitle2">Packing settings</Typography>
+            <FormControl fullWidth size="small">
+              <InputLabel id="packing-mode-select-label">Packing mode</InputLabel>
+              <Select
+                labelId="packing-mode-select-label"
+                label="Packing mode"
+                value={logicalFolder.packing?.mode || "container"}
+                onChange={(event) =>
+                  onUpdateSettings({
+                    packing: {
+                      mode: event.target.value as LogicalDrivePackingMode,
+                    },
+                  })
+                }
+              >
+                <MenuItem value="container">Container packing</MenuItem>
+                <MenuItem value="form">Form packing</MenuItem>
+                <MenuItem value="water-vertical">Water packing vertical</MenuItem>
+                <MenuItem value="water-horizontal">Water packing horizontal</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              type="number"
+              label={`Chunk size (${minChunkSizeMB}-${maxChunkSizeMB} MB)`}
+              value={Number.isFinite(chunkSizeMB) ? chunkSizeMB : minChunkSizeMB}
+              onChange={(event) => {
+                const value = Number(event.target.value || 0);
+                if (!value || Number.isNaN(value)) {
+                  return;
+                }
+                onUpdateSettings({
+                  packing: {
+                    chunkSizeBytes: value * 1024 * 1024,
+                  },
+                });
+              }}
+            />
+            {(logicalFolder.packing?.mode === "water-vertical" ||
+              logicalFolder.packing?.mode === "water-horizontal") ? (
+              <Typography variant="caption" color="warning.main">
+                Water packing relies on SDrive metadata and may be unrecoverable if chunks
+                are corrupted or manually edited.
+              </Typography>
+            ) : null}
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Card variant="outlined">
+        <CardContent>
+          <Stack spacing={2}>
+            <Typography variant="subtitle2">Listing settings</Typography>
+            <FormControl fullWidth size="small">
+              <InputLabel id="merge-mode-select-label">Merge mode</InputLabel>
+              <Select
+                labelId="merge-mode-select-label"
+                label="Merge mode"
+                value={logicalFolder.listing?.mergeMode || "combined"}
+                onChange={(event) =>
+                  onUpdateSettings({
+                    listing: {
+                      mergeMode: event.target.value as "combined" | "drive-priority",
+                    },
+                  })
+                }
+              >
+                <MenuItem value="combined">Combined (all drives)</MenuItem>
+                <MenuItem value="drive-priority">Drive priority</MenuItem>
+              </Select>
+            </FormControl>
+            <Stack direction="row" spacing={1.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="listing-sort-by-label">Sort by</InputLabel>
+                <Select
+                  labelId="listing-sort-by-label"
+                  label="Sort by"
+                  value={logicalFolder.listing?.sortBy || "name"}
+                  onChange={(event) =>
+                    onUpdateSettings({
+                      listing: {
+                        sortBy: event.target.value as "name" | "size" | "extension",
+                      },
+                    })
+                  }
+                >
+                  <MenuItem value="name">Name</MenuItem>
+                  <MenuItem value="size">Size</MenuItem>
+                  <MenuItem value="extension">Extension</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel id="listing-sort-direction-label">Direction</InputLabel>
+                <Select
+                  labelId="listing-sort-direction-label"
+                  label="Direction"
+                  value={logicalFolder.listing?.sortDirection || "asc"}
+                  onChange={(event) =>
+                    onUpdateSettings({
+                      listing: {
+                        sortDirection: event.target.value as "asc" | "desc",
+                      },
+                    })
+                  }
+                >
+                  <MenuItem value="asc">Ascending</MenuItem>
+                  <MenuItem value="desc">Descending</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Button variant="contained" color="error" onClick={onDeleteLogicalDrive}>
+        Delete logical drive
+      </Button>
     </Stack>
   );
 }

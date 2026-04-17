@@ -10,6 +10,8 @@ import {
   Button,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 
@@ -142,6 +144,82 @@ export function DestinationDialog({
         <Button onClick={onClose}>Cancel</Button>
         <Button variant="contained" onClick={onConfirm}>
           {mode === "move" ? "Move" : "Copy"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export function DeleteLogicalFolderDialog({
+  open,
+  logicalFolderName,
+  deleting,
+  failureMessage,
+  mode,
+  confirmName,
+  onClose,
+  onModeChange,
+  onConfirmNameChange,
+  onConfirm,
+}: {
+  open: boolean;
+  logicalFolderName: string;
+  deleting: boolean;
+  failureMessage?: string;
+  mode: "forget" | "delete-all";
+  confirmName: string;
+  onClose: () => void;
+  onModeChange: (mode: "forget" | "delete-all") => void;
+  onConfirmNameChange: (value: string) => void;
+  onConfirm: () => void;
+}) {
+  const canConfirm =
+    confirmName === logicalFolderName && logicalFolderName.length > 0 && !deleting;
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth>
+      <DialogTitle>Delete logical drive</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Choose whether to forget this logical drive only or delete all managed data
+            from backend roots.
+          </Typography>
+          <ToggleButtonGroup
+            color="primary"
+            exclusive
+            value={mode}
+            onChange={(_, value) => {
+              if (value === "forget" || value === "delete-all") {
+                onModeChange(value);
+              }
+            }}
+          >
+            <ToggleButton value="forget">Forget only</ToggleButton>
+            <ToggleButton value="delete-all">Delete all files</ToggleButton>
+          </ToggleButtonGroup>
+          <TextField
+            label={`Type "${logicalFolderName}" to confirm`}
+            value={confirmName}
+            onChange={(event) => onConfirmNameChange(event.target.value)}
+          />
+          {mode === "delete-all" ? (
+            <Typography variant="caption" color="warning.main">
+              Deleting all removes each backend root recursively. Missing roots are treated
+              as already deleted.
+            </Typography>
+          ) : null}
+          {failureMessage ? (
+            <Typography variant="body2" color="warning.main">
+              {failureMessage}
+            </Typography>
+          ) : null}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" color="error" onClick={onConfirm} disabled={!canConfirm}>
+          {deleting ? "Deleting..." : "Confirm delete"}
         </Button>
       </DialogActions>
     </Dialog>

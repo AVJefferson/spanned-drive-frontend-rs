@@ -1,5 +1,6 @@
 import type {
   Drive,
+  DriveListChildrenResponse,
   DriveItemMetadata,
   DriveUploadResult,
 } from "../../contexts/Drive";
@@ -78,22 +79,29 @@ function mapDriveItem(item: Record<string, unknown>): DriveItemMetadata {
 export async function listGoogleDriveChildren(
   drive: Drive,
   parentId: string,
-): Promise<DriveItemMetadata[]> {
+  options?: { pageToken?: string; pageSize?: number },
+): Promise<DriveListChildrenResponse> {
   const query = encodeURIComponent(
     `'${parentId}' in parents and trashed = false`,
-  );
-  const fields = encodeURIComponent(
-    "files(id,name,mimeType,size,parents,modifiedTime,webViewLink,webContentLink,thumbnailLink)",
   );
 
   const response = await authorizedFetch<{
     files?: Record<string, unknown>[];
+    nextPageToken?: string;
   }>(
     drive,
-    `${GOOGLE_DRIVE_API}/files?q=${query}&fields=${fields}&orderBy=folder,name_natural`,
+    `${GOOGLE_DRIVE_API}/files?q=${query}&fields=${encodeURIComponent(
+      "nextPageToken,files(id,name,mimeType,size,parents,modifiedTime,webViewLink,webContentLink,thumbnailLink)",
+    )}&orderBy=folder,name_natural&pageSize=${Math.max(
+      1,
+      Math.min(options?.pageSize || 100, 1000),
+    )}${options?.pageToken ? `&pageToken=${encodeURIComponent(options.pageToken)}` : ""}`,
   );
 
-  return (response.files || []).map(mapDriveItem);
+  return {
+    items: (response.files || []).map(mapDriveItem),
+    nextPageToken: response.nextPageToken,
+  };
 }
 
 export async function fetchGoogleDriveFileMetadata(
@@ -140,7 +148,8 @@ export async function getOrCreateGoogleDriveFolderInParent(
   parentId: string,
   name: string,
 ): Promise<DriveItemMetadata> {
-  const existingFolders = (await listGoogleDriveChildren(drive, parentId)).filter(
+  const existingFolderPage = await listGoogleDriveChildren(drive, parentId);
+  const existingFolders = existingFolderPage.items.filter(
     (entry) => entry.isFolder && entry.name === name,
   );
 

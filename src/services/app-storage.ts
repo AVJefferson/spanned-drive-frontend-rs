@@ -11,8 +11,16 @@ const APP_STORAGE_FILE = "sdrive-app-state.json";
 
 export interface KnownSecondaryAccount extends DriveReference {}
 
+interface LegacyRemoteAppStorageState {
+  version?: 2;
+  updatedAt?: number;
+  session?: PersistedSession;
+  logicalFolders?: LogicalFolder[];
+  knownSecondaryAccounts?: KnownSecondaryAccount[];
+}
+
 export interface RemoteAppStorageState {
-  version: 2;
+  version: 3;
   updatedAt: number;
   session: PersistedSession;
   logicalFolders: LogicalFolder[];
@@ -20,7 +28,7 @@ export interface RemoteAppStorageState {
 }
 
 const EMPTY_REMOTE_STATE: RemoteAppStorageState = {
-  version: 2,
+  version: 3,
   updatedAt: 0,
   session: {
     primaryDrive: null,
@@ -57,15 +65,25 @@ function normalizeKnownSecondaryAccounts(
 }
 
 function normalizeRemoteState(
-  value: Partial<RemoteAppStorageState> | null | undefined,
+  value:
+    | Partial<RemoteAppStorageState>
+    | LegacyRemoteAppStorageState
+    | null
+    | undefined,
 ): RemoteAppStorageState {
+  const rawFolders = Array.isArray(value?.logicalFolders)
+    ? value.logicalFolders
+    : EMPTY_REMOTE_STATE.logicalFolders;
+
   return {
-    version: 2,
+    version: 3,
     updatedAt: Number(value?.updatedAt || 0),
     session: value?.session || EMPTY_REMOTE_STATE.session,
-    logicalFolders: Array.isArray(value?.logicalFolders)
-      ? value.logicalFolders
-      : EMPTY_REMOTE_STATE.logicalFolders,
+    logicalFolders: rawFolders.map((folder) => ({
+      ...folder,
+      // Keep file tree local-only in v3 manifest.
+      items: [],
+    })),
     knownSecondaryAccounts: normalizeKnownSecondaryAccounts(
       value?.knownSecondaryAccounts,
     ),
@@ -91,7 +109,9 @@ export async function readRemoteAppStorage(primaryDrive: Drive | null) {
 
   try {
     const remoteRaw =
-      (await primaryDrive.read_app_storage_json<RemoteAppStorageState>(
+      (await primaryDrive.read_app_storage_json<
+        RemoteAppStorageState | LegacyRemoteAppStorageState
+      >(
         APP_STORAGE_FILE,
       )) || EMPTY_REMOTE_STATE;
     const remote = normalizeRemoteState(remoteRaw);
@@ -117,10 +137,13 @@ export async function mergeRemoteAppStorage(
   const next: RemoteAppStorageState = {
     ...current,
     ...partial,
-    version: 2,
+    version: 3,
     updatedAt: Date.now(),
     session: partial.session || current.session,
-    logicalFolders: partial.logicalFolders || current.logicalFolders,
+    logicalFolders: (partial.logicalFolders || current.logicalFolders).map((folder) => ({
+      ...folder,
+      items: [],
+    })),
     knownSecondaryAccounts: nextKnownSecondaryAccounts,
   };
 

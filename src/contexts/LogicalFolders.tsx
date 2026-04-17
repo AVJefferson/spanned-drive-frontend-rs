@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -13,6 +14,14 @@ import type {
   LogicalEntry,
   LogicalFolder,
   LogicalFolderBackend,
+  LogicalDriveListingSettings,
+  LogicalDrivePackingSettings,
+} from "./LogicalFolderTypes";
+import {
+  createDefaultListingSettings,
+  createDefaultPackingSettings,
+  MAX_CHUNK_SIZE_BYTES,
+  MIN_CHUNK_SIZE_BYTES,
 } from "./LogicalFolderTypes";
 import { useSession } from "./SessionContext";
 import { mergeRemoteAppStorage, readRemoteAppStorage } from "../services/app-storage";
@@ -32,6 +41,18 @@ interface LogicalFoldersContextValue {
     logicalFolderId: string,
     updater: (folder: LogicalFolder) => LogicalFolder,
   ) => void;
+  removeLogicalFolder: (logicalFolderId: string) => void;
+  deleteLogicalFolder: (
+    logicalFolderId: string,
+    mode: "forget" | "delete-all",
+  ) => Promise<{ success: boolean; failedBackends: string[] }>;
+  updateLogicalFolderSettings: (
+    logicalFolderId: string,
+    settings: {
+      packing?: Partial<LogicalDrivePackingSettings>;
+      listing?: Partial<LogicalDriveListingSettings>;
+    },
+  ) => void;
   getLogicalFolder: (logicalFolderId: string) => LogicalFolder | undefined;
 }
 
@@ -48,9 +69,33 @@ function normalizeLogicalEntry(entry: LogicalEntry): LogicalEntry {
 }
 
 function normalizeLogicalFolder(folder: LogicalFolder): LogicalFolder {
+  const drivePriority = (folder.backends || []).map((backend) => backend.driveKey);
+  const rawChunkSize = Number(folder.packing?.chunkSizeBytes);
+  const chunkSizeBytes = Number.isFinite(rawChunkSize)
+    ? Math.min(Math.max(rawChunkSize, MIN_CHUNK_SIZE_BYTES), MAX_CHUNK_SIZE_BYTES)
+    : createDefaultPackingSettings(drivePriority).chunkSizeBytes;
+
   return {
     ...folder,
-    backends: Array.isArray(folder.backends) ? folder.backends : [],
+    status:
+      folder.status === "partially_deleted" ? "partially_deleted" : "active",
+    backends: Array.isArray(folder.backends)
+      ? folder.backends.map((backend) => ({
+          ...backend,
+          backendId:
+            backend.backendId ||
+            `${backend.driveKey}:${backend.rootFolderId || "root"}`,
+        }))
+      : [],
+    packing: {
+      ...createDefaultPackingSettings(drivePriority),
+      ...folder.packing,
+      chunkSizeBytes,
+    },
+    listing: {
+      ...createDefaultListingSettings(),
+      ...folder.listing,
+    },
     items: Array.isArray(folder.items)
       ? sortEntries(folder.items.map(normalizeLogicalEntry))
       : [],
@@ -68,11 +113,20 @@ function mergeLogicalFolders(
     .forEach((folder) => {
       const normalizedFolder = normalizeLogicalFolder(folder);
       const existing = merged.get(folder.id);
+      const hasEntries = normalizedFolder.items.length > 0;
+      const existingHasEntries = (existing?.items || []).length > 0;
       if (
         !existing ||
         (normalizedFolder.updatedAt || 0) >= (existing.updatedAt || 0)
       ) {
-        merged.set(normalizedFolder.id, normalizedFolder);
+        merged.set(normalizedFolder.id, {
+          ...normalizedFolder,
+          // v3 remote manifest no longer persists file trees.
+          items:
+            hasEntries || !existingHasEntries
+              ? normalizedFolder.items
+              : existing?.items || [],
+        });
       }
     });
 
@@ -104,6 +158,7 @@ async function createBackendRoots(name: string, drives: Drive[]) {
       );
 
       return {
+        backendId: createId("logical-backend"),
         provider: drive.provider,
         email: drive.email,
         driveKey: createDriveKey(drive.provider, drive.email),
@@ -189,6 +244,9 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
     };
   }, [hydratedDriveKey, session.primaryDrive]);
 
+  const lastSyncedManifestRef = useRef<string | null>(null);
+  const pendingSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (
       !session.primaryDrive ||
@@ -199,11 +257,50 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    void mergeRemoteAppStorage(session.primaryDrive, {
-      logicalFolders,
-    }).catch((error) => {
-      console.warn("Unable to sync logical folders to app storage", error);
-    });
+    // The remote v3 manifest never persists item trees, so signature
+    // ignores `items` to avoid re-syncing on every live-listing refresh.
+    const manifestSignature = JSON.stringify(
+      logicalFolders
+        .map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+          createdAt: folder.createdAt,
+          updatedAt: folder.updatedAt,
+          status: folder.status,
+          backends: folder.backends,
+          packing: folder.packing,
+          listing: folder.listing,
+        }))
+        .sort((left, right) => left.id.localeCompare(right.id)),
+    );
+
+    if (lastSyncedManifestRef.current === manifestSignature) {
+      return;
+    }
+
+    if (pendingSyncTimerRef.current) {
+      clearTimeout(pendingSyncTimerRef.current);
+    }
+
+    const driveSnapshot = session.primaryDrive;
+    pendingSyncTimerRef.current = setTimeout(() => {
+      pendingSyncTimerRef.current = null;
+      lastSyncedManifestRef.current = manifestSignature;
+      void mergeRemoteAppStorage(driveSnapshot, {
+        logicalFolders,
+      }).catch((error) => {
+        // Allow next change to retry by clearing the cached signature.
+        lastSyncedManifestRef.current = null;
+        console.warn("Unable to sync logical folders to app storage", error);
+      });
+    }, 1500);
+
+    return () => {
+      if (pendingSyncTimerRef.current) {
+        clearTimeout(pendingSyncTimerRef.current);
+        pendingSyncTimerRef.current = null;
+      }
+    };
   }, [hydratedDriveKey, logicalFolders, session.primaryDrive]);
 
   const createLogicalFolder = useCallback(
@@ -224,7 +321,10 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
         name,
         createdAt: now,
         updatedAt: now,
+        status: "active",
         backends,
+        packing: createDefaultPackingSettings(backends.map((backend) => backend.driveKey)),
+        listing: createDefaultListingSettings(),
         items: [],
       };
 
@@ -242,22 +342,139 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
       logicalFolderId: string,
       updater: (folder: LogicalFolder) => LogicalFolder,
     ) => {
-      setLogicalFolders((current) =>
-        current.map((folder) => {
+      setLogicalFolders((current) => {
+        let changed = false;
+        const next = current.map((folder) => {
           if (folder.id !== logicalFolderId) {
             return folder;
           }
 
           const nextFolder = updater(folder);
-          return {
+          if (nextFolder === folder) {
+            return folder;
+          }
+
+          changed = true;
+          const next: LogicalFolder = {
             ...nextFolder,
             updatedAt: Date.now(),
+            status:
+              nextFolder.status === "partially_deleted"
+                ? "partially_deleted"
+                : "active",
             items: sortEntries(nextFolder.items || []),
           };
-        }),
-      );
+          return next;
+        });
+
+        return changed ? next : current;
+      });
     },
     [],
+  );
+
+  const removeLogicalFolder = useCallback((logicalFolderId: string) => {
+    setLogicalFolders((current) =>
+      current.filter((folder) => folder.id !== logicalFolderId),
+    );
+  }, []);
+
+  const getDriveByKey = useCallback(
+    (driveKey: string) => {
+      const allDrives = [
+        ...(session.primaryDrive ? [session.primaryDrive] : []),
+        ...session.secondaryDrives,
+      ];
+      return allDrives.find(
+        (drive) => createDriveKey(drive.provider, drive.email) === driveKey,
+      );
+    },
+    [session.primaryDrive, session.secondaryDrives],
+  );
+
+  const updateLogicalFolderSettings = useCallback(
+    (
+      logicalFolderId: string,
+      settings: {
+        packing?: Partial<LogicalDrivePackingSettings>;
+        listing?: Partial<LogicalDriveListingSettings>;
+      },
+    ) => {
+      replaceLogicalFolder(logicalFolderId, (folder) => {
+        const drivePriority = (folder.backends || []).map((backend) => backend.driveKey);
+        const rawChunkSize = Number(
+          settings.packing?.chunkSizeBytes ?? folder.packing?.chunkSizeBytes,
+        );
+        const chunkSizeBytes = Number.isFinite(rawChunkSize)
+          ? Math.min(Math.max(rawChunkSize, MIN_CHUNK_SIZE_BYTES), MAX_CHUNK_SIZE_BYTES)
+          : createDefaultPackingSettings(drivePriority).chunkSizeBytes;
+
+        return {
+          ...folder,
+          packing: {
+            ...createDefaultPackingSettings(drivePriority),
+            ...folder.packing,
+            ...(settings.packing || {}),
+            chunkSizeBytes,
+          },
+          listing: {
+            ...createDefaultListingSettings(),
+            ...folder.listing,
+            ...(settings.listing || {}),
+          },
+        };
+      });
+    },
+    [replaceLogicalFolder],
+  );
+
+  const deleteLogicalFolder = useCallback(
+    async (logicalFolderId: string, mode: "forget" | "delete-all") => {
+      const folder = logicalFolders.find((item) => item.id === logicalFolderId);
+      if (!folder) {
+        return { success: false, failedBackends: [] };
+      }
+
+      if (mode === "forget") {
+        removeLogicalFolder(logicalFolderId);
+        return { success: true, failedBackends: [] };
+      }
+
+      const failedBackends: string[] = [];
+      for (const backend of folder.backends || []) {
+        const drive = getDriveByKey(backend.driveKey);
+        if (!drive) {
+          failedBackends.push(backend.driveKey);
+          continue;
+        }
+
+        try {
+          await drive.delete_item(backend.rootFolderId);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          // Already-removed roots should not block logical drive deletion.
+          if (
+            !message.includes("404") &&
+            !message.includes("notFound") &&
+            !message.includes("File not found")
+          ) {
+            failedBackends.push(backend.driveKey);
+          }
+        }
+      }
+
+      if (failedBackends.length === 0) {
+        removeLogicalFolder(logicalFolderId);
+        return { success: true, failedBackends: [] };
+      }
+
+      replaceLogicalFolder(logicalFolderId, (existingFolder) => ({
+        ...existingFolder,
+        status: "partially_deleted",
+      }));
+      return { success: false, failedBackends };
+    },
+    [getDriveByKey, logicalFolders, removeLogicalFolder, replaceLogicalFolder],
   );
 
   const getLogicalFolder = useCallback(
@@ -272,9 +489,21 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
       isReady,
       createLogicalFolder,
       replaceLogicalFolder,
+      removeLogicalFolder,
+      deleteLogicalFolder,
+      updateLogicalFolderSettings,
       getLogicalFolder,
     }),
-    [logicalFolders, isReady, createLogicalFolder, replaceLogicalFolder, getLogicalFolder],
+    [
+      logicalFolders,
+      isReady,
+      createLogicalFolder,
+      replaceLogicalFolder,
+      removeLogicalFolder,
+      deleteLogicalFolder,
+      updateLogicalFolderSettings,
+      getLogicalFolder,
+    ],
   );
 
   return (

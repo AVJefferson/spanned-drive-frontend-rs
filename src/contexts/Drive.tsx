@@ -71,6 +71,8 @@ export interface DriveSnapshot extends DriveReference {
     parentId: string,
     name?: string,
   ) => Promise<DriveItemMetadata>;
+  read_drive_settings: () => Promise<DriveSettings | null>;
+  write_drive_settings: (settings: DriveSettings) => Promise<void>;
   read_app_storage_json: <T>(key: string) => Promise<T | null>;
   write_app_storage_json: <T>(key: string, value: T) => Promise<void>;
 }

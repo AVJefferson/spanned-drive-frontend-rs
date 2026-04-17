@@ -6,6 +6,7 @@ interface ErrorBoundaryProps {
   children: ReactNode;
   title?: string;
   message?: string;
+  variant?: "page" | "embedded";
 }
 
 interface ErrorBoundaryState {
@@ -37,9 +38,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return this.props.children;
     }
 
+    const isEmbedded = this.props.variant === "embedded";
+
     return (
-      <Box sx={{ minHeight: "100dvh", p: { xs: 2, md: 3 } }}>
-        <Paper sx={{ maxWidth: 680, mx: "auto", p: { xs: 3, md: 4 }, borderRadius: 4 }}>
+      <Box
+        sx={{
+          minHeight: isEmbedded ? 0 : "100dvh",
+          p: { xs: 2, md: 3 },
+          width: "100%",
+        }}
+      >
+        <Paper
+          sx={{
+            maxWidth: isEmbedded ? "100%" : 680,
+            mx: isEmbedded ? 0 : "auto",
+            p: { xs: 3, md: 4 },
+            borderRadius: 4,
+          }}
+        >
           <Stack spacing={2}>
             <Typography variant="h5">
               {this.props.title || "Something went wrong"}

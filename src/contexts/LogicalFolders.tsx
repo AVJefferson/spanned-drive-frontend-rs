@@ -16,6 +16,7 @@ import type {
 } from "./LogicalFolderTypes";
 import { useSession } from "./SessionContext";
 import { mergeRemoteAppStorage, readRemoteAppStorage } from "../services/app-storage";
+import { getOrCreateGoogleDriveFolderInParent } from "../services/google/google-drive-files";
 import {
   STORAGE_KEYS,
   readLocalStorageJson,
@@ -38,40 +39,58 @@ const LogicalFoldersContext = createContext<
   LogicalFoldersContextValue | undefined
 >(undefined);
 
+function normalizeLogicalFolder(folder: LogicalFolder): LogicalFolder {
+  return {
+    ...folder,
+    backends: Array.isArray(folder.backends) ? folder.backends : [],
+    items: Array.isArray(folder.items) ? sortEntries(folder.items) : [],
+  };
+}
+
 function mergeLogicalFolders(
   localFolders: LogicalFolder[],
   remoteFolders: LogicalFolder[],
 ) {
   const merged = new Map<string, LogicalFolder>();
 
-  [...localFolders, ...remoteFolders].forEach((folder) => {
-    const existing = merged.get(folder.id);
-    if (!existing || (folder.updatedAt || 0) >= (existing.updatedAt || 0)) {
-      merged.set(folder.id, folder);
-    }
-  });
+  [...localFolders, ...remoteFolders]
+    .filter((folder): folder is LogicalFolder => Boolean(folder?.id))
+    .forEach((folder) => {
+      const normalizedFolder = normalizeLogicalFolder(folder);
+      const existing = merged.get(folder.id);
+      if (
+        !existing ||
+        (normalizedFolder.updatedAt || 0) >= (existing.updatedAt || 0)
+      ) {
+        merged.set(normalizedFolder.id, normalizedFolder);
+      }
+    });
 
   return Array.from(merged.values()).sort((left, right) =>
     left.name.localeCompare(right.name),
   );
 }
 
-function sortEntries(entries: LogicalEntry[]) {
-  return [...entries].sort((left, right) => {
-    if (left.kind !== right.kind) {
-      return left.kind === "folder" ? -1 : 1;
-    }
+async function resolveLogicalRootParent(drive: Drive) {
+  if (drive.provider !== "google-drive") {
+    return "root";
+  }
 
-    return left.name.localeCompare(right.name);
-  });
+  const container = await getOrCreateGoogleDriveFolderInParent(
+    drive,
+    "root",
+    ".spanneddrive",
+  );
+  return container.id;
 }
 
 async function createBackendRoots(name: string, drives: Drive[]) {
   const results = await Promise.all(
     drives.map(async (drive): Promise<LogicalFolderBackend> => {
+      const rootParentId = await resolveLogicalRootParent(drive);
       const rootFolder = await drive.create_folder(
         `SDrive · ${name}`,
-        "root",
+        rootParentId,
       );
 
       return {
@@ -91,10 +110,23 @@ async function createBackendRoots(name: string, drives: Drive[]) {
   return results;
 }
 
+function sortEntries(entries: LogicalEntry[]) {
+  return [...entries].sort((left, right) => {
+    if (left.kind !== right.kind) {
+      return left.kind === "folder" ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
+
 export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
   const { session } = useSession();
   const [logicalFolders, setLogicalFolders] = useState<LogicalFolder[]>(() =>
-    readLocalStorageJson(STORAGE_KEYS.logicalFolders, [] as LogicalFolder[]),
+    mergeLogicalFolders(
+      [],
+      readLocalStorageJson(STORAGE_KEYS.logicalFolders, [] as LogicalFolder[]),
+    ),
   );
   const [hydratedDriveKey, setHydratedDriveKey] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -208,7 +240,7 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
           return {
             ...nextFolder,
             updatedAt: Date.now(),
-            items: sortEntries(nextFolder.items),
+            items: sortEntries(nextFolder.items || []),
           };
         }),
       );

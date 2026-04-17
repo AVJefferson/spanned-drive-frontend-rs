@@ -27,7 +27,13 @@ import { ErrorBoundary } from "../../components/ErrorBoundary";
 
 import { CreateLogicalFolderDialog, DestinationDialog } from "./home-dialogs";
 import { HomeExplorer } from "./home-explorer";
-import { InfoTab, SettingsTab, DrivesTab, TasksTab } from "./right-pane-tabs";
+import {
+  InfoTab,
+  LogicalFolderInfoTab,
+  SettingsTab,
+  DrivesTab,
+  TasksTab,
+} from "./right-pane-tabs";
 
 function FolderTabIcon() {
   return "▣";
@@ -53,7 +59,13 @@ const HomePage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const { session, setDriveUsageLimit, refreshAllDriveDetails } = useSession();
+  const {
+    session,
+    setDriveUsageLimit,
+    refreshAllDriveDetails,
+    knownSecondaryAccounts,
+    disconnectSecondaryDrive,
+  } = useSession();
   const { logicalFolders, isReady, createLogicalFolder, getLogicalFolder } =
     useLogicalFolders();
   const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove } = useTasksActions();
@@ -113,7 +125,8 @@ const HomePage = () => {
   const activeLogicalFolder = selectedLogicalFolderId
     ? getLogicalFolder(selectedLogicalFolderId)
     : undefined;
-  const selectedEntry = activeLogicalFolder?.items.find(
+  const activeLogicalFolderItems = activeLogicalFolder?.items || [];
+  const selectedEntry = activeLogicalFolderItems.find(
     (entry) => entry.id === selectedEntryId,
   );
 
@@ -131,31 +144,35 @@ const HomePage = () => {
     }
 
     const items: LogicalEntry[] = [];
-    let pointer = activeLogicalFolder.items.find((entry) => entry.id === currentParentId);
+    let pointer = activeLogicalFolderItems.find((entry) => entry.id === currentParentId);
     while (pointer) {
       items.unshift(pointer);
       pointer = pointer.parentId
-        ? activeLogicalFolder.items.find((entry) => entry.id === pointer?.parentId)
+        ? activeLogicalFolderItems.find((entry) => entry.id === pointer?.parentId)
         : undefined;
     }
 
     return items;
-  }, [activeLogicalFolder, currentParentId]);
+  }, [activeLogicalFolder, activeLogicalFolderItems, currentParentId]);
 
   const destinationOptions = useMemo(
-    () => [
-      {
-        id: null,
-        label: activeLogicalFolder ? `${activeLogicalFolder.name} /` : "Root",
-      },
-      ...(activeLogicalFolder?.items
+    () => {
+      const folderOptions = activeLogicalFolderItems
         .filter((entry) => entry.kind === "folder" && entry.id !== selectedEntryId)
         .map((entry) => ({
           id: entry.id,
           label: entry.name,
-        })) || []),
-    ],
-    [activeLogicalFolder, selectedEntryId],
+        }));
+
+      return [
+        {
+          id: null,
+          label: activeLogicalFolder ? `${activeLogicalFolder.name} /` : "Root",
+        },
+        ...folderOptions,
+      ];
+    },
+    [activeLogicalFolder, activeLogicalFolderItems, selectedEntryId],
   );
 
   if (!session.primaryDrive) {
@@ -253,6 +270,8 @@ const HomePage = () => {
           setDestinationParentId(currentParentId);
         }}
       />
+    ) : activeLogicalFolder ? (
+      <LogicalFolderInfoTab logicalFolder={activeLogicalFolder} />
     ) : (
       <SettingsTab />
     );
@@ -261,6 +280,7 @@ const HomePage = () => {
     <ErrorBoundary
       title="Explorer error"
       message="The file explorer failed to render. Retry this section or reload the app."
+      variant="embedded"
     >
       <Paper sx={{ flex: 1, minHeight: 0, overflow: "auto", p: { xs: 2, md: 3 } }}>
         {!isReady ? (
@@ -383,7 +403,9 @@ const HomePage = () => {
                 <DrivesTab
                   primaryDrive={session.primaryDrive}
                   secondaryDrives={session.secondaryDrives}
+                  knownSecondaryAccounts={knownSecondaryAccounts}
                   onChangeUsageLimit={setDriveUsageLimit}
+                  onDisconnectSecondaryDrive={disconnectSecondaryDrive}
                 />
               </Paper>
             ) : null}
@@ -412,7 +434,9 @@ const HomePage = () => {
                   <DrivesTab
                     primaryDrive={session.primaryDrive}
                     secondaryDrives={session.secondaryDrives}
+                    knownSecondaryAccounts={knownSecondaryAccounts}
                     onChangeUsageLimit={setDriveUsageLimit}
+                    onDisconnectSecondaryDrive={disconnectSecondaryDrive}
                   />
                 ) : null}
                 {selectedDesktopTab === 1 ? detailsPanel : null}

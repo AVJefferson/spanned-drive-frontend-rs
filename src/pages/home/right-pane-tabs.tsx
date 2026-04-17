@@ -31,6 +31,68 @@ interface InfoTabProps {
   onMove: () => void;
 }
 
+export function LogicalFolderInfoTab({
+  logicalFolder,
+}: {
+  logicalFolder: LogicalFolder;
+}) {
+  return (
+    <Stack spacing={2}>
+      <Box>
+        <Typography variant="overline" color="text.secondary">
+          Logical drive
+        </Typography>
+        <Typography variant="h6" sx={{ mt: 0.25 }}>
+          {logicalFolder.name}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {logicalFolder.backends.length} backend drive
+          {logicalFolder.backends.length === 1 ? "" : "s"} ·{" "}
+          {(logicalFolder.items || []).length} total items
+        </Typography>
+      </Box>
+
+      <Card variant="outlined">
+        <CardContent>
+          <Stack spacing={1}>
+            <Typography variant="body2" color="text.secondary">
+              Created
+            </Typography>
+            <Typography variant="subtitle2">
+              {formatDateTime(logicalFolder.createdAt)}
+            </Typography>
+            <Divider />
+            <Typography variant="body2" color="text.secondary">
+              Last updated
+            </Typography>
+            <Typography variant="subtitle2">
+              {formatDateTime(logicalFolder.updatedAt)}
+            </Typography>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      <Box>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Backing drives
+        </Typography>
+        <Stack spacing={1}>
+          {(logicalFolder.backends || []).map((backend) => (
+            <Card key={backend.driveKey} variant="outlined">
+              <CardContent sx={{ py: 1.5 }}>
+                <Typography variant="subtitle2">{backend.email}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {backend.provider}
+                </Typography>
+              </CardContent>
+            </Card>
+          ))}
+        </Stack>
+      </Box>
+    </Stack>
+  );
+}
+
 function DrivePlacementList({
   selectedEntry,
 }: {

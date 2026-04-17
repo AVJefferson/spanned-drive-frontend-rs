@@ -34,6 +34,7 @@ export interface GoogleDriveDetails extends DriveDetails {}
 export interface GoogleDriveSpan extends DriveSpan {}
 
 const ACCESS_TOKEN_SKEW_MS = 60_000;
+const PER_DRIVE_SETTINGS_KEY = "sdrive-per-drive-settings.json";
 
 function GoogleIcon() {
   return (
@@ -192,6 +193,17 @@ export class GoogleDrive implements Drive {
 
   async copy_item(itemId: string, parentId: string, name?: string) {
     return copyGoogleDriveItem(this, itemId, parentId, name);
+  }
+
+  async read_drive_settings() {
+    return readGoogleAppStorageJson<DriveSettings | null>(
+      this,
+      PER_DRIVE_SETTINGS_KEY,
+    );
+  }
+
+  async write_drive_settings(settings: DriveSettings) {
+    await writeGoogleAppStorageJson(this, PER_DRIVE_SETTINGS_KEY, settings);
   }
 
   async read_app_storage_json<T>(key: string): Promise<T | null> {

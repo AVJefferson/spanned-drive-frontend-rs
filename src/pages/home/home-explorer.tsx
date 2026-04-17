@@ -14,6 +14,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import { memo, useMemo } from "react";
 
+import { getDriveImplementation } from "../../contexts/Drive";
 import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
 import { useTasksState } from "../../contexts/TasksContext";
 import { formatBytes } from "../../utils/formatting";
@@ -52,8 +53,7 @@ function activeTaskSummary(activeTaskCount: number) {
   return `${activeTaskCount} background operation${activeTaskCount === 1 ? "" : "s"} running`;
 }
 
-const ExplorerEntryRow = memo(
-  function ExplorerEntryRow({
+const ExplorerEntryRow = memo(function ExplorerEntryRow({
     entry,
     selected,
     directChildrenCount,
@@ -104,16 +104,7 @@ const ExplorerEntryRow = memo(
         </CardContent>
       </Card>
     );
-  },
-  (prev, next) =>
-    prev.entry.id === next.entry.id &&
-    prev.entry.name === next.entry.name &&
-    prev.entry.kind === next.entry.kind &&
-    prev.entry.size === next.entry.size &&
-    prev.selected === next.selected &&
-    prev.directChildrenCount === next.directChildrenCount &&
-    prev.isBusy === next.isBusy,
-);
+  });
 
 export function HomeExplorer({
   logicalFolders,
@@ -220,18 +211,38 @@ export function HomeExplorer({
                         <Typography variant="body2" color="text.secondary">
                           {logicalFolder.backends.length} backend drive
                           {logicalFolder.backends.length === 1 ? "" : "s"} ·{" "}
-                          {logicalFolder.items.length} items
+                          {(logicalFolder.items || []).length} items
                         </Typography>
                       </Box>
                       <Stack direction="row" spacing={1}>
-                        {logicalFolder.backends.map((backend) => (
-                          <Chip
-                            key={backend.driveKey}
-                            label={backend.email.split("@")[0]}
-                            size="small"
-                            variant="outlined"
-                          />
-                        ))}
+                        {(logicalFolder.backends || []).map((backend) => {
+                          const DriveImplementation = getDriveImplementation(
+                            backend.provider,
+                          );
+                          const icon = DriveImplementation
+                            ? new DriveImplementation({}).provider_icon()
+                            : null;
+                          return (
+                            <Chip
+                              key={backend.driveKey}
+                              label={backend.email.split("@")[0]}
+                              size="small"
+                              variant="outlined"
+                              icon={
+                                icon ? (
+                                  <Box
+                                    sx={{
+                                      mt: 0.1,
+                                      "& svg": { width: 14, height: 14, display: "block" },
+                                    }}
+                                  >
+                                    {icon}
+                                  </Box>
+                                ) : undefined
+                              }
+                            />
+                          );
+                        })}
                       </Stack>
                     </Stack>
                   </CardContent>
@@ -244,12 +255,13 @@ export function HomeExplorer({
     );
   }
 
-  const entries = activeLogicalFolder.items.filter(
+  const activeItems = activeLogicalFolder.items || [];
+  const entries = activeItems.filter(
     (entry) => entry.parentId === currentParentId,
   );
   const childCountByParent = useMemo(() => {
     const counts = new Map<string, number>();
-    activeLogicalFolder.items.forEach((item) => {
+    activeItems.forEach((item) => {
       if (!item.parentId) {
         return;
       }
@@ -257,7 +269,7 @@ export function HomeExplorer({
       counts.set(item.parentId, (counts.get(item.parentId) || 0) + 1);
     });
     return counts;
-  }, [activeLogicalFolder.items]);
+  }, [activeItems]);
 
   return (
     <Stack spacing={2.5}>

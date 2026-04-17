@@ -135,6 +135,24 @@ export async function createGoogleDriveFolder(
   return mapDriveItem(item);
 }
 
+export async function getOrCreateGoogleDriveFolderInParent(
+  drive: Drive,
+  parentId: string,
+  name: string,
+): Promise<DriveItemMetadata> {
+  const existingFolders = (await listGoogleDriveChildren(drive, parentId)).filter(
+    (entry) => entry.isFolder && entry.name === name,
+  );
+
+  if (existingFolders.length > 0) {
+    return existingFolders.sort((left, right) =>
+      left.id.localeCompare(right.id),
+    )[0];
+  }
+
+  return createGoogleDriveFolder(drive, name, parentId);
+}
+
 export async function uploadGoogleDriveFile(
   drive: Drive,
   file: File,

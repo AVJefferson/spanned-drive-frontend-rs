@@ -18,14 +18,16 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 
-import { Drives, type Drive } from "../../contexts/Drive";
+import { Drives, type Drive, type DriveReference } from "../../contexts/Drive";
 import { createDriveKey } from "../../utils/ids";
 import { formatBytes, formatPercent } from "../../utils/formatting";
 
 interface DrivesTabProps {
   primaryDrive: Drive;
   secondaryDrives: Drive[];
+  knownSecondaryAccounts: DriveReference[];
   onChangeUsageLimit: (driveKey: string, usageLimitPercent: number) => void;
+  onDisconnectSecondaryDrive: (drive: Drive) => void;
 }
 
 function usageStats(drive: Drive) {
@@ -53,11 +55,15 @@ function usageStats(drive: Drive) {
 function SecondaryDriveCard({
   drive,
   onChangeUsageLimit,
+  onDisconnect,
 }: {
   drive: Drive;
   onChangeUsageLimit: (driveKey: string, usageLimitPercent: number) => void;
+  onDisconnect: (drive: Drive) => void;
 }) {
   const stats = usageStats(drive);
+  const sdrivePercent = stats.allowed ? (stats.used / stats.allowed) * 100 : 0;
+  const isOverCap = stats.allowed > 0 && stats.used > stats.allowed;
 
   return (
     <Card variant="outlined" sx={{ borderRadius: 4 }}>
@@ -113,7 +119,26 @@ function SecondaryDriveCard({
               Free for SDrive: {formatBytes(stats.usableRemaining)}
             </Typography>
           </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={Math.min(100, sdrivePercent)}
+            color={isOverCap ? "error" : "primary"}
+            sx={{ mt: 1, height: 6, borderRadius: 999 }}
+          />
+          {isOverCap ? (
+            <Typography variant="caption" color="error" sx={{ mt: 0.75, display: "block" }}>
+              Over configured limit by {formatBytes(stats.used - stats.allowed)}.
+            </Typography>
+          ) : null}
         </Box>
+        <Button
+          variant="outlined"
+          color="error"
+          sx={{ mt: 2 }}
+          onClick={() => onDisconnect(drive)}
+        >
+          Log out drive
+        </Button>
       </CardContent>
     </Card>
   );
@@ -122,9 +147,14 @@ function SecondaryDriveCard({
 export default function DrivesTab({
   primaryDrive,
   secondaryDrives,
+  knownSecondaryAccounts,
   onChangeUsageLimit,
+  onDisconnectSecondaryDrive,
 }: DrivesTabProps) {
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
+  const [reconnectingDriveKey, setReconnectingDriveKey] = useState<string | null>(
+    null,
+  );
 
   const primaryStats = usageStats(primaryDrive);
   const secondaryTotals = useMemo(() => {
@@ -141,6 +171,20 @@ export default function DrivesTab({
       },
     );
   }, [secondaryDrives]);
+  const secondaryUsagePercent = secondaryTotals.allowed
+    ? (secondaryTotals.used / secondaryTotals.allowed) * 100
+    : 0;
+  const secondaryOverCap =
+    secondaryTotals.allowed > 0 && secondaryTotals.used > secondaryTotals.allowed;
+  const secondaryUnsignedAccounts = useMemo(() => {
+    const connectedKeys = new Set(
+      secondaryDrives.map((drive) => createDriveKey(drive.provider, drive.email)),
+    );
+    return knownSecondaryAccounts.filter(
+      (account) =>
+        !connectedKeys.has(createDriveKey(account.provider, account.email)),
+    );
+  }, [knownSecondaryAccounts, secondaryDrives]);
 
   return (
     <Stack spacing={2}>
@@ -194,19 +238,79 @@ export default function DrivesTab({
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {secondaryDrives.length === 0
               ? "Add secondary drives to spread uploads across more storage."
-              : `${formatBytes(secondaryTotals.used)} of ${formatBytes(secondaryTotals.allowed)} within configured SDrive limits.`}
+              : secondaryOverCap
+                ? `${formatBytes(secondaryTotals.used)} used vs ${formatBytes(secondaryTotals.allowed)} configured. Exceeds SDrive limit by ${formatBytes(secondaryTotals.used - secondaryTotals.allowed)}.`
+                : `${formatBytes(secondaryTotals.used)} of ${formatBytes(secondaryTotals.allowed)} within configured SDrive limits.`}
           </Typography>
           <LinearProgress
             variant="determinate"
-            value={
-              secondaryTotals.allowed
-                ? (secondaryTotals.used / secondaryTotals.allowed) * 100
-                : 0
-            }
+            value={Math.min(100, secondaryUsagePercent)}
+            color={secondaryOverCap ? "error" : "primary"}
             sx={{ mt: 1.5, height: 10, borderRadius: 999 }}
           />
         </CardContent>
       </Card>
+
+      {secondaryUnsignedAccounts.length > 0 ? (
+        <Card variant="outlined" sx={{ borderRadius: 4 }}>
+          <CardContent>
+            <Typography variant="subtitle2">Remembered secondary drives</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              These drives are remembered from your primary account but are currently unsigned in.
+            </Typography>
+            <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+              {secondaryUnsignedAccounts.map((account) => {
+                const DriveImplementation = Drives[account.provider];
+                return (
+                  <Card key={createDriveKey(account.provider, account.email)} variant="outlined">
+                    <CardContent sx={{ py: 1.5 }}>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ bgcolor: "transparent", width: 36, height: 36 }}>
+                          {DriveImplementation
+                            ? new DriveImplementation({}).provider_icon()
+                            : "?"}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography variant="subtitle2" noWrap>
+                            {account.email}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Unsigned in
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={
+                            reconnectingDriveKey ===
+                            createDriveKey(account.provider, account.email)
+                          }
+                          onClick={() => {
+                            const driveKey = createDriveKey(
+                              account.provider,
+                              account.email,
+                            );
+                            setReconnectingDriveKey(driveKey);
+                            DriveImplementation?.oauth_redirect({
+                              accountType: "secondary",
+                              hint: account.email,
+                            });
+                          }}
+                        >
+                          {reconnectingDriveKey ===
+                          createDriveKey(account.provider, account.email)
+                            ? "Reconnecting..."
+                            : "Sign in"}
+                        </Button>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </Stack>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Stack spacing={1.5}>
         {secondaryDrives.map((drive) => (
@@ -214,6 +318,7 @@ export default function DrivesTab({
             key={createDriveKey(drive.provider, drive.email)}
             drive={drive}
             onChangeUsageLimit={onChangeUsageLimit}
+            onDisconnect={onDisconnectSecondaryDrive}
           />
         ))}
       </Stack>

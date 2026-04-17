@@ -1,4 +1,4 @@
-import type { Drive } from "../contexts/Drive";
+import type { Drive, DriveReference } from "../contexts/Drive";
 import type { PersistedSession } from "../contexts/Session";
 import type { LogicalFolder } from "../contexts/LogicalFolderTypes";
 import {
@@ -9,25 +9,75 @@ import {
 
 const APP_STORAGE_FILE = "sdrive-app-state.json";
 
+export interface KnownSecondaryAccount extends DriveReference {}
+
 export interface RemoteAppStorageState {
-  version: 1;
+  version: 2;
   updatedAt: number;
   session: PersistedSession;
   logicalFolders: LogicalFolder[];
+  knownSecondaryAccounts: KnownSecondaryAccount[];
 }
 
 const EMPTY_REMOTE_STATE: RemoteAppStorageState = {
-  version: 1,
+  version: 2,
   updatedAt: 0,
   session: {
     primaryDrive: null,
     secondaryDrives: [],
   },
   logicalFolders: [],
+  knownSecondaryAccounts: [],
 };
 
+function normalizeKnownSecondaryAccounts(
+  accounts: unknown,
+): KnownSecondaryAccount[] {
+  if (!Array.isArray(accounts)) {
+    return [];
+  }
+
+  const deduped = new Map<string, KnownSecondaryAccount>();
+  accounts.forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+    const provider = String((item as { provider?: unknown }).provider || "").trim();
+    const email = String((item as { email?: unknown }).email || "").trim();
+    if (!provider || !email) {
+      return;
+    }
+    deduped.set(`${provider}:${email}`.toLowerCase(), {
+      provider,
+      email,
+    });
+  });
+
+  return Array.from(deduped.values());
+}
+
+function normalizeRemoteState(
+  value: Partial<RemoteAppStorageState> | null | undefined,
+): RemoteAppStorageState {
+  return {
+    version: 2,
+    updatedAt: Number(value?.updatedAt || 0),
+    session: value?.session || EMPTY_REMOTE_STATE.session,
+    logicalFolders: Array.isArray(value?.logicalFolders)
+      ? value.logicalFolders
+      : EMPTY_REMOTE_STATE.logicalFolders,
+    knownSecondaryAccounts: normalizeKnownSecondaryAccounts(
+      value?.knownSecondaryAccounts,
+    ),
+  };
+}
+
 export function readRemoteAppStorageCache() {
-  return readLocalStorageJson(STORAGE_KEYS.remoteAppStateCache, EMPTY_REMOTE_STATE);
+  const cached = readLocalStorageJson<Partial<RemoteAppStorageState>>(
+    STORAGE_KEYS.remoteAppStateCache,
+    EMPTY_REMOTE_STATE,
+  );
+  return normalizeRemoteState(cached);
 }
 
 export function writeRemoteAppStorageCache(value: RemoteAppStorageState) {
@@ -40,10 +90,11 @@ export async function readRemoteAppStorage(primaryDrive: Drive | null) {
   }
 
   try {
-    const remote =
+    const remoteRaw =
       (await primaryDrive.read_app_storage_json<RemoteAppStorageState>(
         APP_STORAGE_FILE,
       )) || EMPTY_REMOTE_STATE;
+    const remote = normalizeRemoteState(remoteRaw);
 
     writeRemoteAppStorageCache(remote);
     return remote;
@@ -58,13 +109,19 @@ export async function mergeRemoteAppStorage(
   partial: Partial<RemoteAppStorageState>,
 ) {
   const current = await readRemoteAppStorage(primaryDrive);
+  const nextKnownSecondaryAccounts = normalizeKnownSecondaryAccounts([
+    ...current.knownSecondaryAccounts,
+    ...(partial.knownSecondaryAccounts || []),
+  ]);
+
   const next: RemoteAppStorageState = {
     ...current,
     ...partial,
-    version: 1,
+    version: 2,
     updatedAt: Date.now(),
     session: partial.session || current.session,
     logicalFolders: partial.logicalFolders || current.logicalFolders,
+    knownSecondaryAccounts: nextKnownSecondaryAccounts,
   };
 
   writeRemoteAppStorageCache(next);

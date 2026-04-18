@@ -80,6 +80,7 @@ export interface DriveSnapshot extends DriveReference {
     parentId: string,
     name?: string,
   ) => Promise<DriveItemMetadata>;
+  download_file: (itemId: string) => Promise<Blob>;
   read_drive_settings: () => Promise<DriveSettings | null>;
   write_drive_settings: (settings: DriveSettings) => Promise<void>;
   read_app_storage_json: <T>(key: string) => Promise<T | null>;

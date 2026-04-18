@@ -1,4 +1,5 @@
 use base64::Engine;
+use std::path::Path;
 
 #[tauri::command]
 fn runtime_environment() -> serde_json::Value {
@@ -108,6 +109,28 @@ async fn google_drive_http_request(
     })
 }
 
+#[tauri::command]
+fn choose_download_directory() -> Option<String> {
+    rfd::FileDialog::new()
+        .pick_folder()
+        .map(|path| path.display().to_string())
+}
+
+#[tauri::command]
+fn write_download_file(destination_path: String, bytes_base64: String) -> Result<(), String> {
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(bytes_base64.trim())
+        .map_err(|error| format!("Invalid file payload: {error}"))?;
+
+    let destination = Path::new(&destination_path);
+    if let Some(parent) = destination.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|error| format!("Unable to create download folders: {error}"))?;
+    }
+
+    std::fs::write(destination, bytes).map_err(|error| format!("Unable to write file: {error}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -115,6 +138,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             runtime_environment,
             google_drive_http_request,
+            choose_download_directory,
+            write_download_file,
             set_secret,
             get_secret,
             delete_secret

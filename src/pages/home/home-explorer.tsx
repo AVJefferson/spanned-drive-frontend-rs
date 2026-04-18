@@ -12,7 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { memo, useMemo } from "react";
+import { memo, useMemo, type MouseEvent } from "react";
 
 import { getDriveImplementation } from "../../contexts/Drive";
 import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
@@ -23,14 +23,19 @@ interface HomeExplorerProps {
   logicalFolders: LogicalFolder[];
   activeLogicalFolder?: LogicalFolder;
   currentParentId: string | null;
-  selectedEntryId: string | null;
+  selectedEntryIds: string[];
   isRefreshingListing?: boolean;
   hasMoreEntries?: boolean;
   breadcrumbs: LogicalEntry[];
   onOpenLogicalFolder: (logicalFolderId: string) => void;
   onBackToRoot: () => void;
   onNavigateToFolder: (entryId: string) => void;
-  onOpenEntry: (entry: LogicalEntry) => void;
+  onOpenEntry: (entry: LogicalEntry, options?: { openFolder?: boolean }) => void;
+  onToggleEntrySelection: (
+    entry: LogicalEntry,
+    options?: { additive?: boolean; range?: boolean },
+  ) => void;
+  onDownloadSelection: () => void;
   onOpenInfo: (entry: LogicalEntry) => void;
   onCreateLogicalFolder: () => void;
   onLoadMore?: () => void;
@@ -61,6 +66,7 @@ const ExplorerEntryRow = memo(function ExplorerEntryRow({
     selected,
     directChildrenCount,
     isBusy,
+    onSelectEntry,
     onOpenEntry,
     onOpenInfo,
   }: {
@@ -68,6 +74,10 @@ const ExplorerEntryRow = memo(function ExplorerEntryRow({
     selected: boolean;
     directChildrenCount: number;
     isBusy: boolean;
+    onSelectEntry: (
+      entry: LogicalEntry,
+      event: MouseEvent<HTMLElement>,
+    ) => void;
     onOpenEntry: (entry: LogicalEntry) => void;
     onOpenInfo: (entry: LogicalEntry) => void;
   }) {
@@ -83,7 +93,8 @@ const ExplorerEntryRow = memo(function ExplorerEntryRow({
             <Typography variant="h4">{entry.kind === "folder" ? folderIcon() : fileIcon()}</Typography>
             <Box
               sx={{ flex: 1, minWidth: 0, cursor: entry.kind === "folder" ? "pointer" : "default" }}
-              onClick={() => onOpenEntry(entry)}
+              onClick={(event) => onSelectEntry(entry, event)}
+              onDoubleClick={() => onOpenEntry(entry)}
             >
               <Typography variant="subtitle1" noWrap>
                 {entry.name}
@@ -115,7 +126,7 @@ export function HomeExplorer({
   logicalFolders,
   activeLogicalFolder,
   currentParentId,
-  selectedEntryId,
+  selectedEntryIds,
   isRefreshingListing = false,
   hasMoreEntries = false,
   breadcrumbs,
@@ -123,6 +134,8 @@ export function HomeExplorer({
   onBackToRoot,
   onNavigateToFolder,
   onOpenEntry,
+  onToggleEntrySelection,
+  onDownloadSelection,
   onOpenInfo,
   onCreateLogicalFolder,
   onLoadMore,
@@ -303,7 +316,7 @@ export function HomeExplorer({
       ) : null}
       <Stack spacing={1}>
         <Typography variant="h4">{activeLogicalFolder.name}</Typography>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }} useFlexGap>
           <Chip label="All logical folders" onClick={onBackToRoot} />
           {breadcrumbs.map((crumb) => (
             <Chip
@@ -312,6 +325,13 @@ export function HomeExplorer({
               onClick={() => onNavigateToFolder(crumb.id)}
             />
           ))}
+          {selectedEntryIds.length > 0 ? (
+            <Chip
+              label={`Download selected (${selectedEntryIds.length})`}
+              color="primary"
+              onClick={onDownloadSelection}
+            />
+          ) : null}
         </Stack>
       </Stack>
 
@@ -336,10 +356,16 @@ export function HomeExplorer({
             <ExplorerEntryRow
               key={entry.id}
               entry={entry}
-              selected={selectedEntryId === entry.id}
+              selected={selectedEntryIds.includes(entry.id)}
               directChildrenCount={childCountByParent.get(entry.id) || 0}
               isBusy={busyEntryIds.has(entry.id)}
-              onOpenEntry={onOpenEntry}
+              onSelectEntry={(activeEntry, event) =>
+                onToggleEntrySelection(activeEntry, {
+                  additive: event.metaKey || event.ctrlKey,
+                  range: event.shiftKey,
+                })
+              }
+              onOpenEntry={(activeEntry) => onOpenEntry(activeEntry, { openFolder: true })}
               onOpenInfo={onOpenInfo}
             />
           ))}

@@ -11,6 +11,7 @@ import { fetchGoogleDriveAbout } from "../../services/google/google-drive-about"
 import {
   copyGoogleDriveItem,
   createGoogleDriveFolder,
+  downloadGoogleDriveFileBlob,
   deleteGoogleDriveItem,
   fetchGoogleDriveFileMetadata,
   listGoogleDriveChildren,
@@ -201,6 +202,10 @@ export class GoogleDrive implements Drive {
 
   async copy_item(itemId: string, parentId: string, name?: string) {
     return copyGoogleDriveItem(this, itemId, parentId, name);
+  }
+
+  async download_file(itemId: string) {
+    return downloadGoogleDriveFileBlob(this, itemId);
   }
 
   async read_drive_settings() {

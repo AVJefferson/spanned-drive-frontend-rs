@@ -20,8 +20,10 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useLogicalFolders } from "../../contexts/LogicalFolders";
 import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
+import { useRuntime } from "../../contexts/RuntimeContext";
 import { useSession } from "../../contexts/SessionContext";
 import { useTasksActions } from "../../contexts/TasksContext";
+import { chooseDownloadDirectory, supportsNativeDownloadDestination } from "../../services/runtime/downloads";
 import { createDriveKey, createId } from "../../utils/ids";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { fetchLogicalFolderListing } from "../../services/drive-manager/listing";
@@ -97,13 +99,16 @@ const HomePage = () => {
     deleteLogicalFolder,
     updateLogicalFolderSettings,
   } = useLogicalFolders();
-  const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove } = useTasksActions();
+  const runtime = useRuntime();
+  const { enqueueUpload, enqueueDelete, enqueueCopy, enqueueMove, enqueueDownload } =
+    useTasksActions();
 
   const [selectedLogicalFolderId, setSelectedLogicalFolderId] = useState<string | null>(
     null,
   );
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null);
   const [selectedDesktopTab, setSelectedDesktopTab] = useState(0);
   const [selectedMobileTab, setSelectedMobileTab] = useState("folders");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -173,9 +178,16 @@ const HomePage = () => {
     : undefined;
   const isLogicalDriveLocked = activeLogicalFolder?.status === "partially_deleted";
   const activeLogicalFolderItems = activeLogicalFolder?.items || [];
-  const selectedEntry = activeLogicalFolderItems.find(
-    (entry) => entry.id === selectedEntryId,
+  const visibleEntries = useMemo(
+    () =>
+      activeLogicalFolderItems.filter(
+        (entry) => entry.parentId === currentParentId,
+      ),
+    [activeLogicalFolderItems, currentParentId],
   );
+  const selectedEntry = selectedEntryIds.length === 1
+    ? activeLogicalFolderItems.find((entry) => entry.id === selectedEntryIds[0])
+    : undefined;
 
   const allAvailableDrives = useMemo(
     () => [
@@ -266,7 +278,7 @@ const HomePage = () => {
     if (!targetLogicalFolder) {
       setSelectedLogicalFolderId(null);
       setCurrentParentId(null);
-      setSelectedEntryId(null);
+      setSelectedEntryIds([]);
       applyingPathRef.current = false;
       return;
     }
@@ -288,7 +300,8 @@ const HomePage = () => {
 
     setSelectedLogicalFolderId(targetLogicalFolder.id);
     setCurrentParentId(pointerParentId);
-    setSelectedEntryId(null);
+    setSelectedEntryIds([]);
+    setSelectionAnchorId(null);
     applyingPathRef.current = false;
   }, [isReady, logicalFolders, searchParams]);
 
@@ -348,7 +361,10 @@ const HomePage = () => {
   const destinationOptions = useMemo(
     () => {
       const folderOptions = activeLogicalFolderItems
-        .filter((entry) => entry.kind === "folder" && entry.id !== selectedEntryId)
+        .filter(
+          (entry) =>
+            entry.kind === "folder" && !selectedEntryIds.includes(entry.id),
+        )
         .map((entry) => ({
           id: entry.id,
           label: entry.name,
@@ -362,7 +378,7 @@ const HomePage = () => {
         ...folderOptions,
       ];
     },
-    [activeLogicalFolder, activeLogicalFolderItems, selectedEntryId],
+    [activeLogicalFolder, activeLogicalFolderItems, selectedEntryIds],
   );
 
   const activeLogicalFolderId = activeLogicalFolder?.id;
@@ -525,7 +541,8 @@ const HomePage = () => {
   }
 
   const resetSelection = () => {
-    setSelectedEntryId(null);
+    setSelectedEntryIds([]);
+    setSelectionAnchorId(null);
     setMobileInfoOpen(false);
   };
 
@@ -535,14 +552,15 @@ const HomePage = () => {
     resetSelection();
   };
 
-  const openEntry = (entry: LogicalEntry) => {
-    if (entry.kind === "folder") {
+  const openEntry = (entry: LogicalEntry, options?: { openFolder?: boolean }) => {
+    if (entry.kind === "folder" && options?.openFolder) {
       setCurrentParentId(entry.id);
       resetSelection();
       return;
     }
 
-    setSelectedEntryId(entry.id);
+    setSelectedEntryIds([entry.id]);
+    setSelectionAnchorId(entry.id);
     setSelectedDesktopTab(1);
     if (isMobile) {
       setMobileInfoOpen(true);
@@ -550,7 +568,8 @@ const HomePage = () => {
   };
 
   const openInfo = (entry: LogicalEntry) => {
-    setSelectedEntryId(entry.id);
+    setSelectedEntryIds([entry.id]);
+    setSelectionAnchorId(entry.id);
     setSelectedDesktopTab(1);
     if (isMobile) {
       setMobileInfoOpen(true);
@@ -606,7 +625,8 @@ const HomePage = () => {
       setDeleteConfirmName("");
       setSelectedLogicalFolderId(null);
       setCurrentParentId(null);
-      setSelectedEntryId(null);
+      setSelectedEntryIds([]);
+      setSelectionAnchorId(null);
     } catch (error) {
       setDeleteLogicalDriveError(
         error instanceof Error ? error.message : "Unable to delete logical drive.",
@@ -622,6 +642,58 @@ const HomePage = () => {
     }
 
     enqueueUpload(activeLogicalFolder.id, currentParentId, files);
+  };
+
+  const toggleEntrySelection = (
+    entry: LogicalEntry,
+    options?: { additive?: boolean; range?: boolean },
+  ) => {
+    const entryIds = visibleEntries.map((item) => item.id);
+    const targetIndex = entryIds.indexOf(entry.id);
+    if (targetIndex < 0) {
+      return;
+    }
+
+    const additive = Boolean(options?.additive);
+    const range = Boolean(options?.range && selectionAnchorId);
+
+    if (range && selectionAnchorId) {
+      const anchorIndex = entryIds.indexOf(selectionAnchorId);
+      const start = Math.min(anchorIndex, targetIndex);
+      const end = Math.max(anchorIndex, targetIndex);
+      const rangeIds = entryIds.slice(start, end + 1);
+      setSelectedEntryIds((current) =>
+        additive ? Array.from(new Set([...current, ...rangeIds])) : rangeIds,
+      );
+      return;
+    }
+
+    if (additive) {
+      setSelectedEntryIds((current) =>
+        current.includes(entry.id)
+          ? current.filter((item) => item !== entry.id)
+          : [...current, entry.id],
+      );
+    } else {
+      setSelectedEntryIds([entry.id]);
+    }
+    setSelectionAnchorId(entry.id);
+  };
+
+  const downloadSelection = async (entryIds: string[]) => {
+    if (!activeLogicalFolder || entryIds.length === 0) {
+      return;
+    }
+
+    let destinationDirectory: string | null = null;
+    if (runtime.kind === "tauri" && supportsNativeDownloadDestination()) {
+      destinationDirectory = await chooseDownloadDirectory();
+      if (!destinationDirectory) {
+        return;
+      }
+    }
+
+    enqueueDownload(activeLogicalFolder.id, entryIds, destinationDirectory);
   };
 
   const detailsPanel =
@@ -651,6 +723,9 @@ const HomePage = () => {
           }
           setCopyMoveMode("move");
           setDestinationParentId(currentParentId);
+        }}
+        onDownload={() => {
+          void downloadSelection([selectedEntry.id]);
         }}
       />
     ) : activeLogicalFolder ? (
@@ -684,7 +759,7 @@ const HomePage = () => {
             logicalFolders={logicalFolders}
             activeLogicalFolder={activeLogicalFolder}
             currentParentId={currentParentId}
-            selectedEntryId={selectedEntryId}
+            selectedEntryIds={selectedEntryIds}
             isRefreshingListing={isRefreshingListing}
             hasMoreEntries={listingHasMore}
             breadcrumbs={breadcrumbs}
@@ -699,6 +774,10 @@ const HomePage = () => {
               resetSelection();
             }}
             onOpenEntry={openEntry}
+            onToggleEntrySelection={toggleEntrySelection}
+            onDownloadSelection={() => {
+              void downloadSelection(selectedEntryIds);
+            }}
             onOpenInfo={openInfo}
             onCreateLogicalFolder={() => {
               setCreateName("");

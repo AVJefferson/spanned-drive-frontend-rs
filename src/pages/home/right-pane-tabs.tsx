@@ -38,6 +38,7 @@ interface InfoTabProps {
   onDelete: () => void;
   onCopy: () => void;
   onMove: () => void;
+  onDownload: () => void;
 }
 
 export function LogicalFolderInfoTab({
@@ -275,6 +276,7 @@ export function InfoTab({
   onDelete,
   onCopy,
   onMove,
+  onDownload,
 }: InfoTabProps) {
   return (
     <Stack spacing={2}>
@@ -329,6 +331,9 @@ export function InfoTab({
           Move
         </Button>
       </Stack>
+      <Button variant="outlined" onClick={onDownload}>
+        Download
+      </Button>
       <Button variant="contained" color="error" onClick={onDelete}>
         Delete
       </Button>

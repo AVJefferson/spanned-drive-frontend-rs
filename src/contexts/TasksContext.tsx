@@ -18,6 +18,10 @@ import {
   readLocalStorageJson,
   writeLocalStorageJson,
 } from "../services/browser/storage";
+import {
+  supportsNativeDownloadDestination,
+  writeDownloadFile,
+} from "../services/runtime/downloads";
 import { createDriveKey, createId } from "../utils/ids";
 import { buildDriveCandidates, reserveDriveBytes } from "../services/drive-manager/quota-guard";
 import {
@@ -29,7 +33,7 @@ import {
 import { planUploadPlacements } from "../services/drive-manager/planner";
 
 type TaskStatus = "queued" | "running" | "completed" | "failed";
-type TaskKind = "upload" | "delete" | "copy" | "move";
+type TaskKind = "upload" | "delete" | "copy" | "move" | "download";
 type MicrotaskStatus = "queued" | "running" | "completed" | "failed";
 
 interface EntrySeed {
@@ -83,12 +87,22 @@ interface CopyFileMicrotask extends BaseMicrotask {
   entry: EntrySeed;
 }
 
+interface DownloadFileMicrotask extends BaseMicrotask {
+  kind: "download-file";
+  logicalFolderId: string;
+  entryId: string;
+  fileName: string;
+  relativePath: string;
+  destinationDirectory?: string | null;
+}
+
 type TaskMicrotask =
   | CreateFolderMicrotask
   | UploadFileMicrotask
   | DeletePlacementMicrotask
   | RemoveManifestMicrotask
-  | CopyFileMicrotask;
+  | CopyFileMicrotask
+  | DownloadFileMicrotask;
 
 export interface TaskRecord {
   id: string;
@@ -122,6 +136,11 @@ interface TasksActionsContextValue {
     logicalFolderId: string,
     entryId: string,
     destinationParentId: string | null,
+  ) => void;
+  enqueueDownload: (
+    logicalFolderId: string,
+    entryIds: string[],
+    destinationDirectory?: string | null,
   ) => void;
   retryTask: (taskId: string) => void;
   clearFinishedTasks: () => void;
@@ -167,6 +186,39 @@ function collectSubtree(logicalFolder: LogicalFolder, entryId: string) {
 function removeSubtree(logicalFolder: LogicalFolder, entryId: string) {
   const removableIds = new Set(collectSubtree(logicalFolder, entryId).map((entry) => entry.id));
   return logicalFolder.items.filter((entry) => !removableIds.has(entry.id));
+}
+
+function sanitizePathSegment(value: string) {
+  return value
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\.\./g, "_")
+    .replace(/^\.+$/, "_")
+    .slice(0, 200) || "item";
+}
+
+function sanitizeRelativePath(path: string) {
+  return path
+    .split("/")
+    .map((segment) => sanitizePathSegment(segment))
+    .filter(Boolean)
+    .join("/");
+}
+
+function joinPaths(left: string, right: string) {
+  return `${left.replace(/\/+$/, "")}/${right.replace(/^\/+/, "")}`;
+}
+
+function triggerBrowserDownload(blob: Blob, fileName: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = fileName;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
 }
 
 function uniqueName(
@@ -591,6 +643,42 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [getDriveByKey, getLogicalFolder, replaceLogicalFolder, updateDrive],
   );
 
+  const applyDownloadFile = useCallback(
+    async (microtask: DownloadFileMicrotask) => {
+      const logicalFolder = getLogicalFolder(microtask.logicalFolderId);
+      if (!logicalFolder) {
+        throw new Error("Logical folder not found");
+      }
+
+      const entry = findEntry(logicalFolder, microtask.entryId);
+      if (!entry || entry.kind !== "file") {
+        throw new Error("Source file is no longer available");
+      }
+
+      const placement = entry.placements[0];
+      if (!placement) {
+        throw new Error("File placement is missing");
+      }
+
+      const drive = getDriveByKey(placement.driveKey);
+      if (!drive) {
+        throw new Error("Source drive is not connected");
+      }
+
+      const blob = await drive.download_file(placement.itemId);
+      const relativePath = sanitizeRelativePath(microtask.relativePath);
+
+      if (microtask.destinationDirectory && supportsNativeDownloadDestination()) {
+        const absolutePath = joinPaths(microtask.destinationDirectory, relativePath);
+        await writeDownloadFile(absolutePath, blob);
+        return;
+      }
+
+      triggerBrowserDownload(blob, relativePath.replace(/\//g, "__"));
+    },
+    [getDriveByKey, getLogicalFolder],
+  );
+
   const runMicrotask = useCallback(
     async (microtask: TaskMicrotask) => {
       switch (microtask.kind) {
@@ -609,9 +697,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         case "copy-file":
           await applyCopyFile(microtask);
           return;
+        case "download-file":
+          await applyDownloadFile(microtask);
+          return;
       }
     },
     [
+      applyDownloadFile,
       applyCopyFile,
       applyCreateFolder,
       applyDeletePlacement,
@@ -1130,6 +1222,89 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [buildCopyMicrotasks, buildDeleteTask, enqueueTask, getLogicalFolder],
   );
 
+  const enqueueDownload = useCallback(
+    (
+      logicalFolderId: string,
+      entryIds: string[],
+      destinationDirectory?: string | null,
+    ) => {
+      const logicalFolder = getLogicalFolder(logicalFolderId);
+      if (!logicalFolder || entryIds.length === 0) {
+        return;
+      }
+
+      const microtasks: TaskMicrotask[] = [];
+      const seenEntryIds = new Set<string>();
+
+      const appendFile = (entry: LogicalEntry, relativePath: string) => {
+        if (seenEntryIds.has(entry.id)) {
+          return;
+        }
+        seenEntryIds.add(entry.id);
+        microtasks.push({
+          id: createId("microtask"),
+          kind: "download-file",
+          status: "queued",
+          title: `Download ${entry.name}`,
+          logicalFolderId,
+          entryId: entry.id,
+          fileName: entry.name,
+          relativePath,
+          destinationDirectory: destinationDirectory || null,
+        });
+      };
+
+      entryIds.forEach((entryId) => {
+        const entry = findEntry(logicalFolder, entryId);
+        if (!entry) {
+          return;
+        }
+
+        if (entry.kind === "file") {
+          appendFile(entry, sanitizePathSegment(entry.name));
+          return;
+        }
+
+        const subtree = collectSubtree(logicalFolder, entry.id);
+        subtree
+          .filter((candidate) => candidate.kind === "file")
+          .forEach((fileEntry) => {
+            const pathSegments = [sanitizePathSegment(entry.name)];
+            let pointerParentId = fileEntry.parentId;
+            const nestedSegments: string[] = [];
+
+            while (pointerParentId && pointerParentId !== entry.id) {
+              const parent = findEntry(logicalFolder, pointerParentId);
+              if (!parent) {
+                break;
+              }
+              nestedSegments.unshift(sanitizePathSegment(parent.name));
+              pointerParentId = parent.parentId;
+            }
+
+            pathSegments.push(...nestedSegments, sanitizePathSegment(fileEntry.name));
+            appendFile(fileEntry, pathSegments.join("/"));
+          });
+      });
+
+      if (microtasks.length === 0) {
+        return;
+      }
+
+      enqueueTask({
+        id: createId("task"),
+        kind: "download",
+        title: `Download ${microtasks.length} file${microtasks.length === 1 ? "" : "s"}`,
+        status: "queued",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        progress: 0,
+        microtasks,
+      });
+    },
+    [enqueueTask, getLogicalFolder],
+  );
+
   const retryTask = useCallback((taskId: string) => {
     setTasks((current) =>
       current.map((task) =>
@@ -1175,6 +1350,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       enqueueDelete,
       enqueueCopy,
       enqueueMove,
+      enqueueDownload,
       retryTask,
       clearFinishedTasks,
     }),
@@ -1183,6 +1359,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       enqueueDelete,
       enqueueCopy,
       enqueueMove,
+      enqueueDownload,
       retryTask,
       clearFinishedTasks,
     ],

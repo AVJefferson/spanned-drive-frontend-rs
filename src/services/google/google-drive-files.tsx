@@ -224,6 +224,27 @@ export async function copyGoogleDriveItem(
   return mapDriveItem(item);
 }
 
+export async function downloadGoogleDriveFileBlob(
+  drive: Drive,
+  fileId: string,
+): Promise<Blob> {
+  const accessToken = await drive.fetch_access_token();
+  const response = await googleDriveFetch(
+    `${GOOGLE_DRIVE_API}/files/${encodeURIComponent(fileId)}?alt=media`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to download file ${fileId}`);
+  }
+
+  return response.blob();
+}
+
 async function findGoogleAppStorageFile(drive: Drive, key: string) {
   const query = encodeURIComponent(
     `name = '${key.replace(/'/g, "\\'")}' and trashed = false`,

@@ -636,12 +636,12 @@ const HomePage = () => {
     }
   };
 
-  const enqueueSelectedUpload = (files: File[]) => {
+  const enqueueSelectedUpload = (files: File[], source: "files" | "folder") => {
     if (!activeLogicalFolder || files.length === 0 || isLogicalDriveLocked) {
       return;
     }
 
-    enqueueUpload(activeLogicalFolder.id, currentParentId, files);
+    enqueueUpload(activeLogicalFolder.id, currentParentId, files, { source });
   };
 
   const toggleEntrySelection = (
@@ -837,7 +837,7 @@ const HomePage = () => {
         hidden
         multiple
         onChange={(event) => {
-          enqueueSelectedUpload(Array.from(event.target.files || []));
+          enqueueSelectedUpload(Array.from(event.target.files || []), "files");
           event.target.value = "";
         }}
       />
@@ -847,7 +847,7 @@ const HomePage = () => {
         hidden
         multiple
         onChange={(event) => {
-          enqueueSelectedUpload(Array.from(event.target.files || []));
+          enqueueSelectedUpload(Array.from(event.target.files || []), "folder");
           event.target.value = "";
         }}
       />

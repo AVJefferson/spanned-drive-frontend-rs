@@ -125,6 +125,7 @@ interface TasksActionsContextValue {
     logicalFolderId: string,
     parentId: string | null,
     files: File[],
+    options?: { source: "files" | "folder" },
   ) => void;
   enqueueDelete: (logicalFolderId: string, entryId: string) => void;
   enqueueCopy: (
@@ -151,6 +152,29 @@ const TasksActionsContext = createContext<TasksActionsContextValue | undefined>(
 
 function getRelativePath(file: File) {
   return (file as File & { webkitRelativePath?: string }).webkitRelativePath || "";
+}
+
+function normalizeUploadPath(value: string) {
+  return value
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join("/");
+}
+
+function deriveUploadPathParts(file: File, source: "files" | "folder") {
+  const rawRelativePath = normalizeUploadPath(getRelativePath(file));
+  if (rawRelativePath) {
+    return rawRelativePath.split("/").filter(Boolean);
+  }
+
+  if (source === "folder") {
+    // Keep a root folder level even if a runtime omits webkitRelativePath.
+    return ["Uploaded folder", file.name || "file"];
+  }
+
+  return [file.name];
 }
 
 function findEntry(logicalFolder: LogicalFolder, entryId: string) {
@@ -850,11 +874,17 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const enqueueUpload = useCallback(
-    (logicalFolderId: string, parentId: string | null, files: File[]) => {
+    (
+      logicalFolderId: string,
+      parentId: string | null,
+      files: File[],
+      options?: { source: "files" | "folder" },
+    ) => {
       const logicalFolder = getLogicalFolder(logicalFolderId);
       if (!logicalFolder || files.length === 0) {
         return;
       }
+      const source = options?.source || "files";
 
       try {
         planUploadPlacements({
@@ -947,11 +977,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         return currentParentId;
       };
 
-      files.forEach((file) => {
-        const relativePath = getRelativePath(file);
-        const pathParts = relativePath
-          ? relativePath.split("/").filter(Boolean)
-          : [file.name];
+      [...files]
+        .sort((left, right) => {
+          const leftPath = deriveUploadPathParts(left, source).join("/");
+          const rightPath = deriveUploadPathParts(right, source).join("/");
+          return leftPath.localeCompare(rightPath);
+        })
+        .forEach((file) => {
+          const pathParts = deriveUploadPathParts(file, source);
         const folderParts = pathParts.slice(0, -1);
         const parentFolderId =
           folderParts.length > 0 ? registerFolderPath(folderParts) : parentId;
@@ -984,7 +1017,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
             mimeType: file.type || "application/octet-stream",
           },
         });
-      });
+        });
 
       enqueueTask({
         id: createId("task"),

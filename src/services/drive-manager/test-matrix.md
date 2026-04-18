@@ -39,6 +39,13 @@
 - Form mode fills by drive priority.
 - Water vertical/horizontal chunking respects chunk bounds (`100 MB`-`1 GB`).
 
+## Folder Upload Structure
+
+- Upload a folder containing nested directories and verify the top-level selected folder appears in the logical tree.
+- Upload two sibling folders with overlapping file names and verify each file remains under its correct parent path.
+- Upload with a runtime that omits `webkitRelativePath` and verify fallback still creates a dedicated folder root.
+- Re-upload an existing folder name into the same parent and verify folder merges by path while preserving nested structure.
+
 ## Resumability
 
 - Task checkpoints persist locally and restore microtask status after refresh.

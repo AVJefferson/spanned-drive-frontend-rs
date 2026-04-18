@@ -12,7 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { memo, useMemo, type MouseEvent } from "react";
+import { memo, useMemo, useState, type MouseEvent, type UIEvent } from "react";
 
 import { getDriveImplementation } from "../../contexts/Drive";
 import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
@@ -191,6 +191,7 @@ export function HomeExplorer({
   const entries = activeItems.filter(
     (entry) => entry.parentId === currentParentId,
   );
+  const [scrollTop, setScrollTop] = useState(0);
   const childCountByParent = useMemo(() => {
     const counts = new Map<string, number>();
     activeItems.forEach((item) => {
@@ -202,6 +203,20 @@ export function HomeExplorer({
     });
     return counts;
   }, [activeItems]);
+  const rowHeight = 108;
+  const viewportHeight = 520;
+  const overscan = 5;
+  const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+  const endIndex = Math.min(
+    entries.length,
+    Math.ceil((scrollTop + viewportHeight) / rowHeight) + overscan,
+  );
+  const virtualEntries = entries.slice(startIndex, endIndex);
+  const totalHeight = entries.length * rowHeight;
+  const offsetY = startIndex * rowHeight;
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
+    setScrollTop(event.currentTarget.scrollTop);
+  };
 
   if (!activeLogicalFolder) {
     return (
@@ -352,23 +367,55 @@ export function HomeExplorer({
         </Card>
       ) : (
         <Stack spacing={1.5}>
-          {entries.map((entry) => (
-            <ExplorerEntryRow
-              key={entry.id}
-              entry={entry}
-              selected={selectedEntryIds.includes(entry.id)}
-              directChildrenCount={childCountByParent.get(entry.id) || 0}
-              isBusy={busyEntryIds.has(entry.id)}
-              onSelectEntry={(activeEntry, event) =>
-                onToggleEntrySelection(activeEntry, {
-                  additive: event.metaKey || event.ctrlKey,
-                  range: event.shiftKey,
-                })
-              }
-              onOpenEntry={(activeEntry) => onOpenEntry(activeEntry, { openFolder: true })}
-              onOpenInfo={onOpenInfo}
-            />
-          ))}
+          <Box
+            sx={{ maxHeight: 520, overflowY: "auto", pr: 0.5 }}
+            onScroll={handleScroll}
+          >
+            <Box
+              sx={{
+                height: `${totalHeight}px`,
+                position: "relative",
+              }}
+            >
+              {virtualEntries.map((entry, index) => {
+                if (!entry) {
+                  return null;
+                }
+                const itemTop = offsetY + index * rowHeight;
+
+                return (
+                  <Box
+                    key={entry.id}
+                    sx={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${itemTop}px)`,
+                      pb: 1.5,
+                    }}
+                  >
+                    <ExplorerEntryRow
+                      entry={entry}
+                      selected={selectedEntryIds.includes(entry.id)}
+                      directChildrenCount={childCountByParent.get(entry.id) || 0}
+                      isBusy={busyEntryIds.has(entry.id)}
+                      onSelectEntry={(activeEntry, event) =>
+                        onToggleEntrySelection(activeEntry, {
+                          additive: event.metaKey || event.ctrlKey,
+                          range: event.shiftKey,
+                        })
+                      }
+                      onOpenEntry={(activeEntry) =>
+                        onOpenEntry(activeEntry, { openFolder: true })
+                      }
+                      onOpenInfo={onOpenInfo}
+                    />
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
           {hasMoreEntries ? (
             <Button variant="outlined" onClick={() => onLoadMore?.()}>
               Load more

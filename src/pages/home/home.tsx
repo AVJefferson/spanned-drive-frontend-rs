@@ -185,8 +185,13 @@ const HomePage = () => {
       ),
     [activeLogicalFolderItems, currentParentId],
   );
+  const activeEntriesById = useMemo(
+    () =>
+      new Map(activeLogicalFolderItems.map((entry) => [entry.id, entry] as const)),
+    [activeLogicalFolderItems],
+  );
   const selectedEntry = selectedEntryIds.length === 1
-    ? activeLogicalFolderItems.find((entry) => entry.id === selectedEntryIds[0])
+    ? activeEntriesById.get(selectedEntryIds[0])
     : undefined;
 
   const allAvailableDrives = useMemo(
@@ -211,16 +216,14 @@ const HomePage = () => {
     }
 
     const items: LogicalEntry[] = [];
-    let pointer = activeLogicalFolderItems.find((entry) => entry.id === currentParentId);
+    let pointer = activeEntriesById.get(currentParentId);
     while (pointer) {
       items.unshift(pointer);
-      pointer = pointer.parentId
-        ? activeLogicalFolderItems.find((entry) => entry.id === pointer?.parentId)
-        : undefined;
+      pointer = pointer.parentId ? activeEntriesById.get(pointer.parentId) : undefined;
     }
 
     return items;
-  }, [activeLogicalFolder, activeLogicalFolderItems, currentParentId]);
+  }, [activeEntriesById, activeLogicalFolder, currentParentId]);
 
   useEffect(() => {
     if (!session.primaryDrive || !isReady) {
@@ -285,12 +288,20 @@ const HomePage = () => {
 
     let pointerParentId: string | null = null;
     const childPath = pathParts.slice(1);
+    const foldersByParentId = new Map<string | null, LogicalEntry[]>();
+    (targetLogicalFolder.items || []).forEach((entry) => {
+      if (entry.kind !== "folder") {
+        return;
+      }
+      const bucket = foldersByParentId.get(entry.parentId) || ([] as LogicalEntry[]);
+      bucket.push(entry);
+      foldersByParentId.set(entry.parentId, bucket);
+    });
     for (const segment of childPath) {
-      const childFolder = (targetLogicalFolder.items || []).find(
-        (entry) =>
-          entry.kind === "folder" &&
-          entry.parentId === pointerParentId &&
-          entry.name === segment,
+      const childFolder: LogicalEntry | undefined = (
+        foldersByParentId.get(pointerParentId) || ([] as LogicalEntry[])
+      ).find(
+        (entry) => entry.name === segment,
       );
       if (!childFolder) {
         break;
@@ -328,15 +339,12 @@ const HomePage = () => {
     }
 
     const folderPathNames = [logicalFolder.name];
-    let pointer = currentParentId
-      ? logicalFolder.items.find((entry) => entry.id === currentParentId)
-      : undefined;
+    const entriesById = new Map(logicalFolder.items.map((entry) => [entry.id, entry] as const));
+    let pointer = currentParentId ? entriesById.get(currentParentId) : undefined;
     const segments: string[] = [];
     while (pointer) {
       segments.unshift(pointer.name);
-      pointer = pointer.parentId
-        ? logicalFolder.items.find((entry) => entry.id === pointer?.parentId)
-        : undefined;
+      pointer = pointer.parentId ? entriesById.get(pointer.parentId) : undefined;
     }
     folderPathNames.push(...segments);
     const nextPath = folderPathNames.map(encodePathSegment).join("/");

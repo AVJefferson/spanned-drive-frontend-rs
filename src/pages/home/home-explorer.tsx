@@ -17,6 +17,11 @@ import { memo, useMemo, useState, type MouseEvent, type UIEvent } from "react";
 import { getDriveImplementation } from "../../contexts/Drive";
 import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
 import { useTasksState } from "../../contexts/TasksContext";
+import {
+  ExplorerFileIcon,
+  ExplorerFolderIcon,
+  InfoTabIcon,
+} from "../../components/app-icons";
 import { formatBytes } from "../../utils/formatting";
 
 interface HomeExplorerProps {
@@ -39,18 +44,6 @@ interface HomeExplorerProps {
   onOpenInfo: (entry: LogicalEntry) => void;
   onCreateLogicalFolder: () => void;
   onLoadMore?: () => void;
-}
-
-function folderIcon() {
-  return "▣";
-}
-
-function fileIcon() {
-  return "◆";
-}
-
-function infoIcon() {
-  return "i";
 }
 
 function activeTaskSummary(activeTaskCount: number) {
@@ -90,7 +83,11 @@ const ExplorerEntryRow = memo(function ExplorerEntryRow({
       >
         <CardContent>
           <Stack direction="row" spacing={1.5} alignItems="center">
-            <Typography variant="h4">{entry.kind === "folder" ? folderIcon() : fileIcon()}</Typography>
+            {entry.kind === "folder" ? (
+              <ExplorerFolderIcon color="action" />
+            ) : (
+              <ExplorerFileIcon color="action" />
+            )}
             <Box
               sx={{ flex: 1, minWidth: 0, cursor: entry.kind === "folder" ? "pointer" : "default" }}
               onClick={(event) => onSelectEntry(entry, event)}
@@ -114,7 +111,7 @@ const ExplorerEntryRow = memo(function ExplorerEntryRow({
               </Button>
             ) : null}
             <IconButton onClick={() => onOpenInfo(entry)} aria-label="Show details">
-              <Typography component="span">{infoIcon()}</Typography>
+              <InfoTabIcon fontSize="small" />
             </IconButton>
           </Stack>
         </CardContent>
@@ -254,7 +251,7 @@ export function HomeExplorer({
                   <CardContent>
                     <Stack direction="row" spacing={1.5} alignItems="center">
                       <Typography variant="h3" component="div">
-                        {folderIcon()}
+                        <ExplorerFolderIcon fontSize="inherit" />
                       </Typography>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography variant="h6" noWrap>

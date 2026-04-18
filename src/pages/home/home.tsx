@@ -23,6 +23,13 @@ import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
 import { useRuntime } from "../../contexts/RuntimeContext";
 import { useSession } from "../../contexts/SessionContext";
 import { useTasksActions } from "../../contexts/TasksContext";
+import {
+  DrivesTabIcon,
+  FolderTabIcon,
+  InfoTabIcon,
+  SettingsTabIcon,
+  TasksTabIcon,
+} from "../../components/app-icons";
 import { chooseDownloadDirectory, supportsNativeDownloadDestination } from "../../services/runtime/downloads";
 import { createDriveKey, createId } from "../../utils/ids";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
@@ -34,6 +41,7 @@ import {
   DestinationDialog,
 } from "./home-dialogs";
 import { HomeExplorer } from "./home-explorer";
+import { useHomePathSync } from "./use-home-path-sync";
 import {
   InfoTab,
   LogicalFolderInfoTab,
@@ -41,40 +49,6 @@ import {
   DrivesTab,
   TasksTab,
 } from "./right-pane-tabs";
-
-function FolderTabIcon() {
-  return "▣";
-}
-
-function DrivesTabIcon() {
-  return "◫";
-}
-
-function TasksTabIcon() {
-  return "✓";
-}
-
-function SettingsTabIcon() {
-  return "◌";
-}
-
-function InfoTabIcon() {
-  return "i";
-}
-
-const HOME_PATH_SESSION_KEY = "sdrive.home.path";
-
-function encodePathSegment(value: string) {
-  return encodeURIComponent(value);
-}
-
-function decodePathSegment(value: string) {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -137,21 +111,11 @@ const HomePage = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const refreshedDriveSetRef = useRef<string | null>(null);
-  const applyingPathRef = useRef(false);
 
   useEffect(() => {
     folderInputRef.current?.setAttribute("webkitdirectory", "");
     folderInputRef.current?.setAttribute("directory", "");
   }, []);
-
-  useEffect(() => {
-    if (!session.primaryDrive) {
-      if (location.search) {
-        sessionStorage.setItem(HOME_PATH_SESSION_KEY, location.search);
-      }
-      navigate("/signin");
-    }
-  }, [location.search, navigate, session.primaryDrive]);
 
   useEffect(() => {
     const driveSetSignature = [
@@ -209,6 +173,18 @@ const HomePage = () => {
       ),
     [allAvailableDrives],
   );
+  const clearSelection = useCallback(() => {
+    setSelectedEntryIds([]);
+    setSelectionAnchorId(null);
+    setMobileInfoOpen(false);
+  }, []);
+  const openLogicalFolderPath = useCallback(
+    (logicalFolderId: string | null, parentId: string | null) => {
+      setSelectedLogicalFolderId(logicalFolderId);
+      setCurrentParentId(parentId);
+    },
+    [],
+  );
 
   const breadcrumbs = useMemo(() => {
     if (!activeLogicalFolder || !currentParentId) {
@@ -225,146 +201,20 @@ const HomePage = () => {
     return items;
   }, [activeEntriesById, activeLogicalFolder, currentParentId]);
 
-  useEffect(() => {
-    if (!session.primaryDrive || !isReady) {
-      return;
-    }
-
-    if (searchParams.get("path")) {
-      return;
-    }
-
-    const rememberedSearch = sessionStorage.getItem(HOME_PATH_SESSION_KEY);
-    if (!rememberedSearch?.startsWith("?")) {
-      return;
-    }
-
-    const rememberedParams = new URLSearchParams(rememberedSearch.slice(1));
-    const rememberedPath = rememberedParams.get("path");
-    if (!rememberedPath) {
-      sessionStorage.removeItem(HOME_PATH_SESSION_KEY);
-      return;
-    }
-
-    applyingPathRef.current = true;
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("path", rememberedPath);
-      return next;
-    });
-    sessionStorage.removeItem(HOME_PATH_SESSION_KEY);
-  }, [isReady, searchParams, session.primaryDrive, setSearchParams]);
-
-  useEffect(() => {
-    if (!isReady) {
-      return;
-    }
-
-    const rawPath = searchParams.get("path");
-    if (!rawPath) {
-      return;
-    }
-
-    const pathParts = rawPath
-      .split("/")
-      .map((segment) => decodePathSegment(segment).trim())
-      .filter(Boolean);
-    if (pathParts.length === 0) {
-      return;
-    }
-
-    const driveName = pathParts[0];
-    const targetLogicalFolder = logicalFolders.find(
-      (folder) => folder.name === driveName,
-    );
-
-    if (!targetLogicalFolder) {
-      setSelectedLogicalFolderId(null);
-      setCurrentParentId(null);
-      setSelectedEntryIds([]);
-      applyingPathRef.current = false;
-      return;
-    }
-
-    let pointerParentId: string | null = null;
-    const childPath = pathParts.slice(1);
-    const foldersByParentId = new Map<string | null, LogicalEntry[]>();
-    (targetLogicalFolder.items || []).forEach((entry) => {
-      if (entry.kind !== "folder") {
-        return;
-      }
-      const bucket = foldersByParentId.get(entry.parentId) || ([] as LogicalEntry[]);
-      bucket.push(entry);
-      foldersByParentId.set(entry.parentId, bucket);
-    });
-    for (const segment of childPath) {
-      const childFolder: LogicalEntry | undefined = (
-        foldersByParentId.get(pointerParentId) || ([] as LogicalEntry[])
-      ).find(
-        (entry) => entry.name === segment,
-      );
-      if (!childFolder) {
-        break;
-      }
-      pointerParentId = childFolder.id;
-    }
-
-    setSelectedLogicalFolderId(targetLogicalFolder.id);
-    setCurrentParentId(pointerParentId);
-    setSelectedEntryIds([]);
-    setSelectionAnchorId(null);
-    applyingPathRef.current = false;
-  }, [isReady, logicalFolders, searchParams]);
-
-  useEffect(() => {
-    if (!isReady || applyingPathRef.current) {
-      return;
-    }
-
-    const currentPath = searchParams.get("path") || "";
-    if (!selectedLogicalFolderId) {
-      if (currentPath) {
-        setSearchParams((current) => {
-          const next = new URLSearchParams(current);
-          next.delete("path");
-          return next;
-        });
-      }
-      return;
-    }
-
-    const logicalFolder = getLogicalFolder(selectedLogicalFolderId);
-    if (!logicalFolder) {
-      return;
-    }
-
-    const folderPathNames = [logicalFolder.name];
-    const entriesById = new Map(logicalFolder.items.map((entry) => [entry.id, entry] as const));
-    let pointer = currentParentId ? entriesById.get(currentParentId) : undefined;
-    const segments: string[] = [];
-    while (pointer) {
-      segments.unshift(pointer.name);
-      pointer = pointer.parentId ? entriesById.get(pointer.parentId) : undefined;
-    }
-    folderPathNames.push(...segments);
-    const nextPath = folderPathNames.map(encodePathSegment).join("/");
-    if (nextPath === currentPath) {
-      return;
-    }
-
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("path", nextPath);
-      return next;
-    });
-  }, [
-    currentParentId,
-    getLogicalFolder,
+  useHomePathSync({
     isReady,
-    searchParams,
+    locationSearch: location.search,
+    hasPrimaryDrive: Boolean(session.primaryDrive),
+    logicalFolders,
     selectedLogicalFolderId,
+    currentParentId,
+    searchParams,
     setSearchParams,
-  ]);
+    navigate,
+    getLogicalFolder,
+    openLogicalFolderPath,
+    resetSelection: clearSelection,
+  });
 
   const destinationOptions = useMemo(
     () => {
@@ -548,11 +398,7 @@ const HomePage = () => {
     return null;
   }
 
-  const resetSelection = () => {
-    setSelectedEntryIds([]);
-    setSelectionAnchorId(null);
-    setMobileInfoOpen(false);
-  };
+  const resetSelection = clearSelection;
 
   const openLogicalFolder = (logicalFolderId: string) => {
     setSelectedLogicalFolderId(logicalFolderId);
@@ -915,9 +761,9 @@ const HomePage = () => {
             {explorerPanel}
             <Paper sx={{ width: 380, minWidth: 380, display: "flex", flexDirection: "column", height: "calc(100vh - 125px)"}}>
               <Tabs value={selectedDesktopTab} onChange={(_, value) => setSelectedDesktopTab(value)} variant="fullWidth">
-                <Tab label={DrivesTabIcon()} />
-                <Tab label={InfoTabIcon()} />
-                <Tab label={TasksTabIcon()} />
+                <Tab icon={<DrivesTabIcon />} />
+                <Tab icon={<InfoTabIcon />} />
+                <Tab icon={<TasksTabIcon />} />
               </Tabs>
               <Box sx={{ flex: 1, overflow: "auto", p: 2.5 }}>
                 {selectedDesktopTab === 0 ? (
@@ -1009,10 +855,10 @@ const HomePage = () => {
       {isMobile ? (
         <Paper elevation={8} sx={{ position: "fixed", left: 12, right: 12, bottom: 12, borderRadius: 999, overflow: "hidden" }}>
           <BottomNavigation value={selectedMobileTab} onChange={(_, value) => setSelectedMobileTab(value)} showLabels>
-            <BottomNavigationAction label="Folders" value="folders" icon={<span>{FolderTabIcon()}</span>} />
-            <BottomNavigationAction label="Drives" value="drives" icon={<span>{DrivesTabIcon()}</span>} />
-            <BottomNavigationAction label="Tasks" value="tasks" icon={<span>{TasksTabIcon()}</span>} />
-            <BottomNavigationAction label="Settings" value="settings" icon={<span>{SettingsTabIcon()}</span>} />
+            <BottomNavigationAction label="Folders" value="folders" icon={<FolderTabIcon />} />
+            <BottomNavigationAction label="Drives" value="drives" icon={<DrivesTabIcon />} />
+            <BottomNavigationAction label="Tasks" value="tasks" icon={<TasksTabIcon />} />
+            <BottomNavigationAction label="Settings" value="settings" icon={<SettingsTabIcon />} />
           </BottomNavigation>
         </Paper>
       ) : null}

@@ -22,6 +22,11 @@ import {
   supportsNativeDownloadDestination,
   writeDownloadFile,
 } from "../services/runtime/downloads";
+import {
+  blobToBase64,
+  compressionPilotEnabled,
+  gzipBlob,
+} from "../services/download/compression-pilot";
 import { createDriveKey, createId } from "../utils/ids";
 import { buildDriveCandidates, reserveDriveBytes } from "../services/drive-manager/quota-guard";
 import {
@@ -96,13 +101,27 @@ interface DownloadFileMicrotask extends BaseMicrotask {
   destinationDirectory?: string | null;
 }
 
+interface DownloadBundleFileRef {
+  entryId: string;
+  relativePath: string;
+}
+
+interface DownloadBundleMicrotask extends BaseMicrotask {
+  kind: "download-bundle";
+  logicalFolderId: string;
+  files: DownloadBundleFileRef[];
+  bundleName: string;
+  destinationDirectory?: string | null;
+}
+
 type TaskMicrotask =
   | CreateFolderMicrotask
   | UploadFileMicrotask
   | DeletePlacementMicrotask
   | RemoveManifestMicrotask
   | CopyFileMicrotask
-  | DownloadFileMicrotask;
+  | DownloadFileMicrotask
+  | DownloadBundleMicrotask;
 
 export interface TaskRecord {
   id: string;
@@ -703,6 +722,62 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [getDriveByKey, getLogicalFolder],
   );
 
+  const applyDownloadBundle = useCallback(
+    async (microtask: DownloadBundleMicrotask) => {
+      const logicalFolder = getLogicalFolder(microtask.logicalFolderId);
+      if (!logicalFolder) {
+        throw new Error("Logical folder not found");
+      }
+
+      const filesPayload: {
+        path: string;
+        mimeType: string;
+        contentBase64: string;
+      }[] = [];
+
+      for (const fileRef of microtask.files) {
+        const entry = findEntry(logicalFolder, fileRef.entryId);
+        if (!entry || entry.kind !== "file") {
+          continue;
+        }
+
+        const placement = entry.placements[0];
+        if (!placement) {
+          continue;
+        }
+
+        const drive = getDriveByKey(placement.driveKey);
+        if (!drive) {
+          continue;
+        }
+
+        const blob = await drive.download_file(placement.itemId);
+        filesPayload.push({
+          path: sanitizeRelativePath(fileRef.relativePath),
+          mimeType: entry.mimeType || "application/octet-stream",
+          contentBase64: await blobToBase64(blob),
+        });
+      }
+
+      const manifestBlob = new Blob([JSON.stringify({
+        generatedAt: Date.now(),
+        format: "sdrive-bundle-v1",
+        files: filesPayload,
+      })], { type: "application/json" });
+      const compressed = await gzipBlob(manifestBlob);
+      const fileName = `${sanitizePathSegment(microtask.bundleName)}.sdrivebundle.gz`;
+
+      if (microtask.destinationDirectory && supportsNativeDownloadDestination()) {
+        const absolutePath = joinPaths(microtask.destinationDirectory, fileName);
+        await writeDownloadFile(absolutePath, compressed);
+        return;
+      }
+
+      triggerBrowserDownload(compressed, fileName);
+    },
+    [getDriveByKey, getLogicalFolder],
+  );
+
   const runMicrotask = useCallback(
     async (microtask: TaskMicrotask) => {
       switch (microtask.kind) {
@@ -724,9 +799,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         case "download-file":
           await applyDownloadFile(microtask);
           return;
+        case "download-bundle":
+          await applyDownloadBundle(microtask);
+          return;
       }
     },
     [
+      applyDownloadBundle,
       applyDownloadFile,
       applyCopyFile,
       applyCreateFolder,
@@ -1266,6 +1345,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const bundleFileRefs: DownloadBundleFileRef[] = [];
       const microtasks: TaskMicrotask[] = [];
       const seenEntryIds = new Set<string>();
 
@@ -1274,6 +1354,11 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           return;
         }
         seenEntryIds.add(entry.id);
+        const normalizedPath = sanitizeRelativePath(relativePath);
+        bundleFileRefs.push({
+          entryId: entry.id,
+          relativePath: normalizedPath,
+        });
         microtasks.push({
           id: createId("microtask"),
           kind: "download-file",
@@ -1282,7 +1367,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
           logicalFolderId,
           entryId: entry.id,
           fileName: entry.name,
-          relativePath,
+          relativePath: normalizedPath,
           destinationDirectory: destinationDirectory || null,
         });
       };
@@ -1324,15 +1409,33 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      const shouldBundle = compressionPilotEnabled() && bundleFileRefs.length > 1;
+      const taskMicrotasks = shouldBundle
+        ? ([
+            {
+              id: createId("microtask"),
+              kind: "download-bundle" as const,
+              status: "queued" as const,
+              title: `Build compressed bundle (${bundleFileRefs.length} files)`,
+              logicalFolderId,
+              files: bundleFileRefs,
+              bundleName: logicalFolder.name,
+              destinationDirectory: destinationDirectory || null,
+            },
+          ] as TaskMicrotask[])
+        : microtasks;
+
       enqueueTask({
         id: createId("task"),
         kind: "download",
-        title: `Download ${microtasks.length} file${microtasks.length === 1 ? "" : "s"}`,
+        title: shouldBundle
+          ? `Download compressed bundle (${bundleFileRefs.length} files)`
+          : `Download ${microtasks.length} file${microtasks.length === 1 ? "" : "s"}`,
         status: "queued",
         createdAt: Date.now(),
         updatedAt: Date.now(),
         progress: 0,
-        microtasks,
+        microtasks: taskMicrotasks,
       });
     },
     [enqueueTask, getLogicalFolder],

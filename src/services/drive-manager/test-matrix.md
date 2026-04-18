@@ -57,3 +57,9 @@
 - Large folder listing paginates (load more) without freezing UI.
 - Large upload planning runs via worker-backed planner for non-blocking interaction.
 - Verify no full-file buffering in custom planner/executor paths.
+
+## Compression Pilot
+
+- With `VITE_ENABLE_DOWNLOAD_GZIP_PILOT=true`, downloading multi-file selections emits a single `.sdrivebundle.gz`.
+- With flag disabled, downloads remain per-file behavior.
+- Verify compressed bundle writes to selected destination path in Tauri and browser save flow.

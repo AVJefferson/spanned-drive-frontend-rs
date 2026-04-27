@@ -264,23 +264,25 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
   const [hydratedDriveKey, setHydratedDriveKey] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
+  const primaryDriveKey = session.primaryDrive
+    ? createDriveKey(session.primaryDrive.provider, session.primaryDrive.email)
+    : null;
+
   useEffect(() => {
     writeLocalStorageJson(STORAGE_KEYS.logicalFolders, logicalFolders);
   }, [logicalFolders]);
 
+  const lastSyncedManifestRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!session.primaryDrive) {
+    const primaryDrive = session.primaryDrive;
+    if (!primaryDrive || !primaryDriveKey) {
       setIsReady(true);
       setHydratedDriveKey(null);
       return;
     }
 
-    const currentDriveKey = createDriveKey(
-      session.primaryDrive.provider,
-      session.primaryDrive.email,
-    );
-
-    if (hydratedDriveKey === currentDriveKey) {
+    if (hydratedDriveKey === primaryDriveKey) {
       setIsReady(true);
       return;
     }
@@ -288,21 +290,40 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setIsReady(false);
 
-    readRemoteFoldersState(session.primaryDrive)
+    readRemoteFoldersState(primaryDrive)
       .then((remoteState) => {
         if (cancelled) {
           return;
         }
 
-        setLogicalFolders((current) =>
-          mergeLogicalFolders(current, remoteState.logicalFolders || []),
-        );
-        setHydratedDriveKey(currentDriveKey);
+        setLogicalFolders((current) => {
+          const merged = mergeLogicalFolders(
+            current,
+            remoteState.logicalFolders || [],
+          );
+          // Seed sync ref so hydrate doesn't trigger an immediate write-back.
+          lastSyncedManifestRef.current = JSON.stringify(
+            merged
+              .map((folder) => ({
+                id: folder.id,
+                name: folder.name,
+                createdAt: folder.createdAt,
+                updatedAt: folder.updatedAt,
+                status: folder.status,
+                backends: folder.backends,
+                packing: folder.packing,
+                listing: folder.listing,
+              }))
+              .sort((left, right) => left.id.localeCompare(right.id)),
+          );
+          return merged;
+        });
+        setHydratedDriveKey(primaryDriveKey);
         setIsReady(true);
       })
       .catch(() => {
         if (!cancelled) {
-          setHydratedDriveKey(currentDriveKey);
+          setHydratedDriveKey(primaryDriveKey);
           setIsReady(true);
         }
       });
@@ -310,9 +331,11 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [hydratedDriveKey, session.primaryDrive]);
-
-  const lastSyncedManifestRef = useRef<string | null>(null);
+    // Depend on stable driveKey string, not the drive object ref. The ref
+    // changes whenever drive details refresh, which would cancel this read
+    // before remote state is loaded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydratedDriveKey, primaryDriveKey]);
   const pendingSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

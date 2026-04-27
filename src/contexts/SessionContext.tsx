@@ -191,7 +191,14 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [session.primaryDrive]);
+    // Depend on stable driveKey, not the drive object ref. Ref changes during
+    // drive details refresh would otherwise cancel this hydrate read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    session.primaryDrive
+      ? createDriveKey(session.primaryDrive.provider, session.primaryDrive.email)
+      : null,
+  ]);
 
   useEffect(() => {
     if (!session.primaryDrive) {
@@ -456,7 +463,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       ...session.secondaryDrives,
     ];
 
-    await Promise.all(
+    const refreshed = await Promise.all(
       drives.map(async (drive) => {
         try {
           await drive.refresh_drive_details();
@@ -468,17 +475,37 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
               allowed_space_usage_percent: usageLimitPercent,
             };
           }
-          updateDrive(drive);
+          saveDrive(drive);
+          return drive;
         } catch (error) {
           console.warn(`Unable to refresh drive details for ${drive.email}`, error);
+          return drive;
         }
       }),
     );
+
+    // Batch all drive updates into a single state replacement so dependent
+    // hydrate effects (folders, known secondaries) don't get cancelled by N
+    // intermediate ref changes.
+    setSessionState((prev) => {
+      const byKey = new Map(
+        refreshed.map((drive) => [createDriveKey(drive.provider, drive.email), drive]),
+      );
+      const nextPrimary =
+        prev.primaryDrive &&
+        byKey.get(createDriveKey(prev.primaryDrive.provider, prev.primaryDrive.email));
+      return {
+        primaryDrive: nextPrimary || prev.primaryDrive,
+        secondaryDrives: prev.secondaryDrives.map(
+          (drive) =>
+            byKey.get(createDriveKey(drive.provider, drive.email)) || drive,
+        ),
+      };
+    });
   }, [
     readPerDriveSettings,
     session.primaryDrive,
     session.secondaryDrives,
-    updateDrive,
   ]);
 
   const logout = useCallback(() => {

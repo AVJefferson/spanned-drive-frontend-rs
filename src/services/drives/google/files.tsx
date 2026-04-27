@@ -333,3 +333,23 @@ export async function writeGoogleAppStorageJson<T>(
     ).catch(() => {});
   }
 }
+
+export async function deleteGoogleAppStorageJson(
+  drive: Drive,
+  key: string,
+): Promise<void> {
+  const { canonical, duplicates } = await findGoogleAppStorageFile(drive, key);
+  const targets = [canonical, ...duplicates].filter(
+    (entry): entry is AppStorageFileEntry => Boolean(entry?.id),
+  );
+
+  await Promise.all(
+    targets.map((entry) =>
+      authorizedFetch<void>(
+        drive,
+        `${GOOGLE_DRIVE_API}/files/${encodeURIComponent(entry.id)}`,
+        { method: "DELETE" },
+      ).catch(() => {}),
+    ),
+  );
+}

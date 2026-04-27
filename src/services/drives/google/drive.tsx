@@ -17,6 +17,7 @@ import {
   fetchGoogleDriveFileMetadata,
   getOrCreateGoogleDriveFolderInParent,
   listGoogleDriveChildren,
+  deleteGoogleAppStorageJson,
   readGoogleAppStorageJson,
   uploadGoogleDriveFile,
   writeGoogleAppStorageJson,
@@ -273,6 +274,15 @@ export class GoogleDrive implements Drive {
       return;
     }
     await writeGoogleAppStorageJson(this, key, value);
+  }
+
+  async delete_app_storage_json(key: string): Promise<void> {
+    // Routes through the Google Drive API directly (works in both browser and
+    // Tauri runtimes as long as an access token can be obtained). There is no
+    // backend proxy endpoint for deleting appData files, so we issue the
+    // DELETE call client-side. Best-effort: callers should treat failures as
+    // non-fatal (e.g. lock-file cleanup).
+    await deleteGoogleAppStorageJson(this, key);
   }
 
   /**

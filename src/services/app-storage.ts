@@ -196,9 +196,16 @@ async function acquireRemoteLock(drive: Drive, lockFile: string): Promise<string
 
 async function releaseRemoteLock(drive: Drive, lockFile: string): Promise<void> {
   try {
-    await drive.write_app_storage_json<null>(lockFile, null);
+    await drive.delete_app_storage_json(lockFile);
   } catch (error) {
     console.warn(`Unable to release remote lock ${lockFile}`, error);
+    // Fallback: blank out the lock so a future writer doesn't see a stale
+    // claim if the delete failed.
+    try {
+      await drive.write_app_storage_json<null>(lockFile, null);
+    } catch {
+      // Best-effort; the stale-lock timeout will eventually unblock writers.
+    }
   }
 }
 

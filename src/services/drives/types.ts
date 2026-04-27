@@ -79,6 +79,7 @@ export interface DriveSnapshot extends DriveReference {
   write_drive_settings: (settings: DriveSettings) => Promise<void>;
   read_app_storage_json: <T>(key: string) => Promise<T | null>;
   write_app_storage_json: <T>(key: string, value: T) => Promise<void>;
+  delete_app_storage_json: (key: string) => Promise<void>;
 
   /**
    * Resolve the parent folder id under which the logical-folder root should be

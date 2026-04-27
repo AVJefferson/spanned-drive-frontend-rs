@@ -11,7 +11,7 @@ import {
   STORAGE_KEYS,
   readLocalStorageJson,
   writeLocalStorageJson,
-} from "../services/browser/storage";
+} from "../services/storage/storage";
 
 export type ThemePreference = "light" | "dark" | "system";
 

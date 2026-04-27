@@ -9,28 +9,102 @@ import {
   type ReactNode,
 } from "react";
 
-import type { Drive } from "./Drive";
-import type {
-  LogicalEntry,
-  LogicalFolder,
-  LogicalFolderBackend,
-  LogicalDriveListingSettings,
-  LogicalDrivePackingSettings,
-} from "./LogicalFolderTypes";
-import {
-  createDefaultListingSettings,
-  createDefaultPackingSettings,
-  MAX_CHUNK_SIZE_BYTES,
-  MIN_CHUNK_SIZE_BYTES,
-} from "./LogicalFolderTypes";
+import type { Drive, DriveReference } from "../services/drives/types";
+
+export type LogicalDrivePackingMode =
+  | "container"
+  | "form"
+  | "water-vertical"
+  | "water-horizontal";
+
+export type LogicalDriveStatus = "active" | "partially_deleted";
+
+export type ListingMergeMode = "combined" | "drive-priority";
+export type ListingSortKey = "name" | "size" | "extension";
+export type ListingSortDirection = "asc" | "desc";
+
+export interface LogicalDriveListingSettings {
+  mergeMode: ListingMergeMode;
+  sortBy: ListingSortKey;
+  sortDirection: ListingSortDirection;
+}
+
+export interface LogicalDrivePackingSettings {
+  mode: LogicalDrivePackingMode;
+  chunkSizeBytes: number;
+  drivePriority: string[];
+}
+
+export interface LogicalPlacement extends DriveReference {
+  driveKey: string;
+  itemId: string;
+  parentId?: string;
+  rootFolderId: string;
+}
+
+export interface LogicalEntry {
+  id: string;
+  name: string;
+  kind: "file" | "folder";
+  parentId: string | null;
+  size: number;
+  mimeType?: string;
+  extension?: string;
+  corrupted?: boolean;
+  duplicateCandidate?: boolean;
+  createdAt: number;
+  updatedAt: number;
+  placements: LogicalPlacement[];
+}
+
+export interface LogicalFolderBackend extends DriveReference {
+  backendId: string;
+  driveKey: string;
+  rootFolderId: string;
+  usageLimitPercent: number;
+}
+
+export interface LogicalFolder {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  status?: LogicalDriveStatus;
+  backends: LogicalFolderBackend[];
+  packing?: LogicalDrivePackingSettings;
+  listing?: LogicalDriveListingSettings;
+  items: LogicalEntry[];
+}
+
+export const DEFAULT_CHUNK_SIZE_BYTES = 200 * 1024 * 1024;
+export const MIN_CHUNK_SIZE_BYTES = 100 * 1024 * 1024;
+export const MAX_CHUNK_SIZE_BYTES = 1024 * 1024 * 1024;
+
+export function createDefaultPackingSettings(
+  drivePriority: string[],
+): LogicalDrivePackingSettings {
+  return {
+    mode: "container",
+    chunkSizeBytes: DEFAULT_CHUNK_SIZE_BYTES,
+    drivePriority,
+  };
+}
+
+export function createDefaultListingSettings(): LogicalDriveListingSettings {
+  return {
+    mergeMode: "combined",
+    sortBy: "name",
+    sortDirection: "asc",
+  };
+}
+
 import { useSession } from "./SessionContext";
 import { readRemoteFoldersState, writeRemoteFoldersState } from "../services/app-storage";
-import { getOrCreateGoogleDriveFolderInParent } from "../services/google/google-drive-files";
 import {
   STORAGE_KEYS,
   readLocalStorageJson,
   writeLocalStorageJson,
-} from "../services/browser/storage";
+} from "../services/storage/storage";
 import { createDriveKey, createId } from "../utils/ids";
 
 interface LogicalFoldersContextValue {
@@ -136,16 +210,10 @@ function mergeLogicalFolders(
 }
 
 async function resolveLogicalRootParent(drive: Drive) {
-  if (drive.provider !== "google-drive") {
-    return "root";
+  if (drive.resolve_logical_root_parent) {
+    return drive.resolve_logical_root_parent();
   }
-
-  const container = await getOrCreateGoogleDriveFolderInParent(
-    drive,
-    "root",
-    ".spanneddrive",
-  );
-  return container.id;
+  return "root";
 }
 
 async function createBackendRoots(name: string, drives: Drive[]) {

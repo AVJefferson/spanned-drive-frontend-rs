@@ -1,6 +1,6 @@
-import type { Drive, DriveDetails } from "../../contexts/Drive";
+import type { Drive, DriveDetails } from "../types";
 
-import { googleDriveFetch } from "./google-drive-http";
+import { googleDriveFetch } from "./http";
 
 const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
 

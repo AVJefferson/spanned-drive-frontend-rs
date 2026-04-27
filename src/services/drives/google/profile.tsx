@@ -1,4 +1,4 @@
-import type { DriveUser } from "../../contexts/Drive";
+import type { DriveUser } from "../types";
 
 export function decodeGoogleIdToken(token: string): DriveUser & {
   email?: string;

@@ -1,11 +1,11 @@
-import type { Drive, DriveReference } from "../contexts/Drive";
-import type { PersistedSession } from "../contexts/Session";
-import type { LogicalFolder } from "../contexts/LogicalFolderTypes";
+import type { Drive, DriveReference } from "./drives/types";
+import type { PersistedSession } from "../contexts/SessionContext";
+import type { LogicalFolder } from "../contexts/FoldersContext";
 import {
   STORAGE_KEYS,
   readLocalStorageJson,
   writeLocalStorageJson,
-} from "./browser/storage";
+} from "./storage/storage";
 
 // ---------------------------------------------------------------------------
 // File name constants

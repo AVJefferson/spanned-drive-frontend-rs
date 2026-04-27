@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { ComponentType, JSX } from "react";
 
 export interface DriveReference {
   provider: string;
@@ -52,6 +52,7 @@ export interface DriveListChildrenResponse {
 
 export interface DriveSnapshot extends DriveReference {
   providerLabel: string;
+  /** @deprecated prefer the static `provider_icon` on the constructor. Kept for instance access. */
   provider_icon: () => JSX.Element;
   refresh_token: string;
   acquired_at: number;
@@ -66,25 +67,25 @@ export interface DriveSnapshot extends DriveReference {
   refresh_drive_details: () => Promise<DriveDetails>;
   get_item_metadata: (itemId: string) => Promise<DriveItemMetadata>;
   create_folder: (name: string, parentId: string) => Promise<DriveItemMetadata>;
-  upload_file: (
-    file: File,
-    parentId: string,
-  ) => Promise<DriveUploadResult>;
+  upload_file: (file: File, parentId: string) => Promise<DriveUploadResult>;
   list_children: (
     parentId: string,
     options?: { pageToken?: string; pageSize?: number },
   ) => Promise<DriveListChildrenResponse>;
   delete_item: (itemId: string) => Promise<void>;
-  copy_item: (
-    itemId: string,
-    parentId: string,
-    name?: string,
-  ) => Promise<DriveItemMetadata>;
+  copy_item: (itemId: string, parentId: string, name?: string) => Promise<DriveItemMetadata>;
   download_file: (itemId: string) => Promise<Blob>;
   read_drive_settings: () => Promise<DriveSettings | null>;
   write_drive_settings: (settings: DriveSettings) => Promise<void>;
   read_app_storage_json: <T>(key: string) => Promise<T | null>;
   write_app_storage_json: <T>(key: string, value: T) => Promise<void>;
+
+  /**
+   * Resolve the parent folder id under which the logical-folder root should be
+   * created on this drive. Defaults to "root". Providers that need a hidden
+   * container (e.g. Google Drive's `.spanneddrive`) override this.
+   */
+  resolve_logical_root_parent?: () => Promise<string>;
 }
 
 export type Drive = DriveSnapshot;
@@ -92,29 +93,19 @@ export type Drive = DriveSnapshot;
 export type DriveConstructor = (new (data: Record<string, unknown>) => Drive) & {
   provider: string;
   provider_label: string;
-  oauth_redirect: (props: { accountType: "primary" | "secondary"; hint?: string }) => void;
+  /** Static icon used by sign-in / provider picker before any drive instance exists. */
+  provider_icon: () => JSX.Element;
+  oauth_redirect: (props: {
+    accountType: "primary" | "secondary";
+    hint?: string;
+  }) => void;
+  /** React component rendered by the OAuth redirect route after the user returns. */
+  oauth_callback: ComponentType<{ params: OauthCallbackParams }>;
 };
 
-const DriveImplementations: Record<string, { default: DriveConstructor }> =
-  import.meta.glob("./drives/*.tsx", {
-    eager: true,
-  }) as Record<string, { default: DriveConstructor }>;
-
-export const Drives = Object.keys(DriveImplementations).reduce(
-  (accumulator, path) => {
-    const driveModule = DriveImplementations[path];
-    const driveImplementation = driveModule?.default;
-
-    if (!driveImplementation?.provider) {
-      return accumulator;
-    }
-
-    accumulator[driveImplementation.provider] = driveImplementation;
-    return accumulator;
-  },
-  {} as Record<string, DriveConstructor>,
-);
-
-export function getDriveImplementation(provider: string) {
-  return Drives[provider];
+export interface OauthCallbackParams {
+  provider: string;
+  queryParams: Record<string, string>;
+  hashParams: Record<string, string>;
+  oauthParams: Record<string, unknown>;
 }

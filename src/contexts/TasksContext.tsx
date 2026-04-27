@@ -9,24 +9,24 @@ import {
   type ReactNode,
 } from "react";
 
-import type { Drive } from "./Drive";
-import { useLogicalFolders } from "./LogicalFolders";
-import type { LogicalEntry, LogicalFolder } from "./LogicalFolderTypes";
+import type { Drive } from "../services/drives/types";
+import { useLogicalFolders } from "./FoldersContext";
+import type { LogicalEntry, LogicalFolder } from "./FoldersContext";
 import { useSession } from "./SessionContext";
 import {
   STORAGE_KEYS,
   readLocalStorageJson,
   writeLocalStorageJson,
-} from "../services/browser/storage";
+} from "../services/storage/storage";
 import {
   supportsNativeDownloadDestination,
   writeDownloadFile,
-} from "../services/runtime/downloads";
+} from "../platform/runtime";
 import {
   blobToBase64,
   compressionPilotEnabled,
   gzipBlob,
-} from "../services/download/compression-pilot";
+} from "../services/download/compression";
 import { createDriveKey, createId } from "../utils/ids";
 import { buildDriveCandidates, reserveDriveBytes } from "../services/drive-manager/quota-guard";
 import {

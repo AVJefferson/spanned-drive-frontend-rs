@@ -1,10 +1,10 @@
-import type { Drive } from "../../contexts/Drive";
+import type { Drive } from "../drives/types";
 import type {
   LogicalDriveListingSettings,
   LogicalDrivePackingSettings,
   LogicalEntry,
   LogicalFolder,
-} from "../../contexts/LogicalFolderTypes";
+} from "../../contexts/FoldersContext";
 
 export interface DriveCandidate {
   backendId: string;

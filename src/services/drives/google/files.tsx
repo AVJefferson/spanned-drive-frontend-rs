@@ -3,9 +3,9 @@ import type {
   DriveListChildrenResponse,
   DriveItemMetadata,
   DriveUploadResult,
-} from "../../contexts/Drive";
+} from "../types";
 
-import { googleDriveFetch } from "./google-drive-http";
+import { googleDriveFetch } from "./http";
 
 const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
 const GOOGLE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3/files";

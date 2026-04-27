@@ -15,7 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 
-import type { Drive } from "../../contexts/Drive";
+import type { Drive } from "../../services/drives/types";
 import { createDriveKey } from "../../utils/ids";
 import { formatBytes } from "../../utils/formatting";
 

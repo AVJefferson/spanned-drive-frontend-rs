@@ -1,4 +1,4 @@
-import type { Drive } from "../../contexts/Drive";
+import type { Drive } from "../drives/types";
 
 const CHUNK_MANIFEST_FILE = ".sdrive-chunks.json";
 

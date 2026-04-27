@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { NavigateFunction, SetURLSearchParams } from "react-router-dom";
 
-import type { LogicalFolder } from "../../contexts/LogicalFolderTypes";
+import type { LogicalFolder } from "../../contexts/FoldersContext";
 
 const HOME_PATH_SESSION_KEY = "sdrive.home.path";
 

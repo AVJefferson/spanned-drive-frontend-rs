@@ -1,4 +1,4 @@
-import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
+import type { LogicalEntry } from "../../contexts/FoldersContext";
 import type { ListingResultEntry } from "./types";
 
 export interface ChunkManifestRef {

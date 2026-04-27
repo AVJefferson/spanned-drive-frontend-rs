@@ -14,14 +14,14 @@ import {
 import { alpha } from "@mui/material/styles";
 import { memo, useMemo, useState, type MouseEvent, type UIEvent } from "react";
 
-import { getDriveImplementation } from "../../contexts/Drive";
-import type { LogicalEntry, LogicalFolder } from "../../contexts/LogicalFolderTypes";
+import { getDriveImplementation } from "../../services/drives/registry";
+import type { LogicalEntry, LogicalFolder } from "../../contexts/FoldersContext";
 import { useTasksState } from "../../contexts/TasksContext";
 import {
   ExplorerFileIcon,
   ExplorerFolderIcon,
   InfoTabIcon,
-} from "../../components/app-icons";
+} from "../../components/icons";
 import { formatBytes } from "../../utils/formatting";
 
 interface HomeExplorerProps {

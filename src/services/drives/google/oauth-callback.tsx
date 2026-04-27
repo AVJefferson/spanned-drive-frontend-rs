@@ -1,16 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../../../contexts/SessionContext";
-import { GoogleDrive } from "../../../contexts/drives/google-drive";
-import { FetchGoogleWebAccessTokenAndRefreshToken } from "../../../services/google/google-auth";
-import { SaveDrive } from "../../../services/browser/save-drive";
-import { backendFetchProfile } from "../../../services/google/google-backend-client";
+import { getDriveImplementation } from "../registry";
+import { FetchGoogleWebAccessTokenAndRefreshToken } from "./auth";
+import { saveDrive } from "../../storage/drive";
+import { backendFetchProfile } from "./client";
 import {
   STORAGE_KEYS,
   removeLocalStorageKey,
-} from "../../../services/browser/storage";
+} from "../../storage/storage";
+import type { OauthCallbackParams } from "../types";
 
-export default function GoogleWebRedirect(params: any) {
+const GOOGLE_DRIVE_PROVIDER = "google-drive";
+
+export default function GoogleWebRedirect({ params }: { params: OauthCallbackParams }) {
   const { setPrimaryDrive, addSecondaryDrive } = useSession();
   const navigate = useNavigate();
   const [errorNode, setErrorNode] = useState<React.ReactNode | null>(null);
@@ -20,11 +23,18 @@ export default function GoogleWebRedirect(params: any) {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
+    const oauthParams = params.oauthParams as {
+      timestamp?: number;
+      nonce?: string;
+      provider?: string;
+      verifier?: string;
+    };
+
     if (
-      !params?.oauthParams?.timestamp ||
-      !params?.oauthParams?.nonce ||
-      !params?.oauthParams?.provider ||
-      !params?.oauthParams?.verifier
+      !oauthParams?.timestamp ||
+      !oauthParams?.nonce ||
+      !oauthParams?.provider ||
+      !oauthParams?.verifier
     ) {
       setErrorNode(
         <div>
@@ -51,8 +61,8 @@ export default function GoogleWebRedirect(params: any) {
     }
 
     if (
-      params?.provider !== "google-drive" &&
-      params.oauthParams.provider !== "google-drive"
+      params?.provider !== GOOGLE_DRIVE_PROVIDER &&
+      oauthParams.provider !== GOOGLE_DRIVE_PROVIDER
     ) {
       setErrorNode(<h1>Provider mismatch</h1>);
       return;
@@ -73,7 +83,7 @@ export default function GoogleWebRedirect(params: any) {
     const accountType = stateParts[0];
     const nonceFromState = stateParts[1];
 
-    if (nonceFromState !== params.oauthParams.nonce) {
+    if (nonceFromState !== oauthParams.nonce) {
       setErrorNode(
         <div>
           <h1>Error: Invalid state parameter</h1>
@@ -106,7 +116,7 @@ export default function GoogleWebRedirect(params: any) {
 
     FetchGoogleWebAccessTokenAndRefreshToken(
       params.queryParams.code,
-      params.oauthParams.verifier,
+      oauthParams.verifier,
     )
       .then(async (data) => {
         if (!data?.access_token) {
@@ -118,7 +128,11 @@ export default function GoogleWebRedirect(params: any) {
           throw new Error("Unable to determine Google account email");
         }
 
-        const drive = new GoogleDrive({
+        const DriveImplementation = getDriveImplementation(GOOGLE_DRIVE_PROVIDER);
+        if (!DriveImplementation) {
+          throw new Error("GoogleDrive implementation is not registered");
+        }
+        const drive = new DriveImplementation({
           email: user.email,
           refresh_token: data.refresh_token || "",
           acquired_at: Date.now(),
@@ -148,7 +162,7 @@ export default function GoogleWebRedirect(params: any) {
           console.warn("Drive details refresh failed during login", error);
         }
 
-        SaveDrive(drive);
+        saveDrive(drive);
         removeLocalStorageKey(STORAGE_KEYS.oauthParams);
 
         if (accountType === "primary") {
@@ -170,17 +184,12 @@ export default function GoogleWebRedirect(params: any) {
   if (errorNode) {
     return (
       <>
-      <div>
-        {errorNode}
-      </div>
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate("/")}
-        >
-          Go back
-        </button>
-      </div>
+        <div>{errorNode}</div>
+        <div>
+          <button type="button" onClick={() => navigate("/")}>
+            Go back
+          </button>
+        </div>
       </>
     );
   }

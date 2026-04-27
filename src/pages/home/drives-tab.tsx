@@ -18,7 +18,8 @@ import {
 } from "@mui/material";
 import { useMemo, useState } from "react";
 
-import { Drives, type Drive, type DriveReference } from "../../contexts/Drive";
+import { Drives } from "../../services/drives/registry";
+import type { Drive, DriveReference } from "../../services/drives/types";
 import { createDriveKey } from "../../utils/ids";
 import { formatBytes, formatPercent } from "../../utils/formatting";
 import { getEffectiveLimitPercent } from "../../services/drive-manager/quota-guard";
@@ -269,7 +270,7 @@ export default function DrivesTab({
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Avatar sx={{ bgcolor: "transparent", width: 30, height: 30 }}>
                           {DriveImplementation
-                            ? new DriveImplementation({}).provider_icon()
+                            ? <DriveImplementation.provider_icon />
                             : "?"}
                         </Avatar>
                         <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -357,7 +358,7 @@ export default function DrivesTab({
               >
                 <ListItemAvatar>
                   <Avatar sx={{ bgcolor: "transparent" }}>
-                    {new DriveImplementation({}).provider_icon()}
+                    <DriveImplementation.provider_icon />
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText primary={DriveImplementation.provider_label} />

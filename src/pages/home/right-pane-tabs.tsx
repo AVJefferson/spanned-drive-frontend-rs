@@ -20,11 +20,11 @@ import type {
   LogicalEntry,
   LogicalFolder,
   LogicalDrivePackingMode,
-} from "../../contexts/LogicalFolderTypes";
+} from "../../contexts/FoldersContext";
 import {
   MAX_CHUNK_SIZE_BYTES,
   MIN_CHUNK_SIZE_BYTES,
-} from "../../contexts/LogicalFolderTypes";
+} from "../../contexts/FoldersContext";
 import { useRuntime } from "../../contexts/RuntimeContext";
 import { useSession } from "../../contexts/SessionContext";
 import { useSettings } from "../../contexts/SettingsContext";

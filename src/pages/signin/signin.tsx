@@ -13,7 +13,7 @@ import {
 import "@mui/material/styles";
 import { Link } from "react-router-dom";
 import bgImage from "../../assets/signin-bg.avif";
-import { default as handleGoogleSignIn } from "../../services/google/google-oauth-signin";
+import { default as handleGoogleSignIn } from "../../services/drives/google/oauth";
 
 const GoogleIcon = () => (
   <svg

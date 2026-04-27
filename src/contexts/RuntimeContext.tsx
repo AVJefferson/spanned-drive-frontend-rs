@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { detectRuntime, type RuntimeInfo } from "../services/runtime/tauri";
+import { detectRuntime, type RuntimeInfo } from "../platform/runtime";
 
 const defaultRuntime: RuntimeInfo = {
   kind: "browser",

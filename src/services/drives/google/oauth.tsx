@@ -1,8 +1,8 @@
-import { GOOGLE_OAUTH_REDIRECT_URI } from "./google-constants";
+import { GOOGLE_OAUTH_REDIRECT_URI } from "./constants";
 import {
   STORAGE_KEYS,
   writeLocalStorageJson,
-} from "../browser/storage";
+} from "../../storage/storage";
 
 export function GoogleOauthRedirect(
   state: string = "primary",

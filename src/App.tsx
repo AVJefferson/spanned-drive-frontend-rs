@@ -19,6 +19,7 @@ import {
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useSettings } from "./contexts/SettingsContext";
 import { createAppTheme } from "./theme/create-app-theme";
+import { HomeProviders } from "./pages/home/home-providers";
 
 function App() {
   const { settings } = useSettings();
@@ -41,7 +42,14 @@ function App() {
           message="A page crashed while rendering. Try again or reload the app."
         >
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/"
+              element={
+                <HomeProviders>
+                  <HomePage />
+                </HomeProviders>
+              }
+            />
             <Route path="/error" element={<ErrorPage />} />
             <Route path="/signin" element={<SignInPage />} />
             <Route path="/terms" element={<TermsPage />} />

@@ -18,8 +18,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useLogicalFolders } from "../../contexts/LogicalFolders";
-import type { LogicalEntry } from "../../contexts/LogicalFolderTypes";
+import { useLogicalFolders } from "../../contexts/FoldersContext";
+import type { LogicalEntry } from "../../contexts/FoldersContext";
 import { useRuntime } from "../../contexts/RuntimeContext";
 import { useSession } from "../../contexts/SessionContext";
 import { useTasksActions } from "../../contexts/TasksContext";
@@ -29,8 +29,8 @@ import {
   InfoTabIcon,
   SettingsTabIcon,
   TasksTabIcon,
-} from "../../components/app-icons";
-import { chooseDownloadDirectory, supportsNativeDownloadDestination } from "../../services/runtime/downloads";
+} from "../../components/icons";
+import { chooseDownloadDirectory, supportsNativeDownloadDestination } from "../../platform/runtime";
 import { createDriveKey, createId } from "../../utils/ids";
 import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { fetchLogicalFolderListing } from "../../services/drive-manager/listing";

@@ -1,8 +1,8 @@
-import type { LogicalFolder } from "../../contexts/LogicalFolderTypes";
+import type { LogicalFolder } from "../../contexts/FoldersContext";
 import { buildDriveCandidates } from "./quota-guard";
 import { planPacking } from "./packing";
 import type { FileUploadPlanItem, UploadPlan } from "./types";
-import type { Drive } from "../../contexts/Drive";
+import type { Drive } from "../drives/types";
 import { createId } from "../../utils/ids";
 import { planPackingInWorker } from "./worker-client";
 

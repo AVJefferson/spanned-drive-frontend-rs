@@ -2,7 +2,7 @@ import {
   STORAGE_KEYS,
   readLocalStorageJson,
   writeLocalStorageJson,
-} from "../browser/storage";
+} from "../storage/storage";
 import type { TaskCheckpoint, TaskCheckpointMicrotask } from "./types";
 
 function readCheckpoints() {

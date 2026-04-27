@@ -10,27 +10,43 @@ import {
 } from "react";
 
 import { createDriveKey } from "../utils/ids";
-import type { Drive, DriveSettings } from "./Drive.tsx";
-import { Session, emptySession } from "./Session.tsx";
+import type { Drive, DriveReference, DriveSettings, DriveSnapshot } from "../services/drives/types";
 
-import { SavePersistentSession } from "../services/browser/save-persistent-session.tsx";
-import { toPersistedSession } from "../services/browser/save-persistent-session.tsx";
-import { RetreivePersistentSession } from "../services/browser/retreive-persistent-session.tsx";
-import { LogoutFromLocalStorage } from "../services/browser/logout.tsx";
-import { SaveDrive } from "../services/browser/save-drive.tsx";
+export interface Session {
+  primaryDrive: DriveSnapshot | null;
+  secondaryDrives: DriveSnapshot[];
+}
+
+export const emptySession: Session = {
+  primaryDrive: null,
+  secondaryDrives: [],
+};
+
+export interface PersistedSession {
+  primaryDrive: DriveReference | null;
+  secondaryDrives: DriveReference[];
+}
+
+import {
+  retreivePersistentSession,
+  savePersistentSession,
+  toPersistedSession,
+} from "../services/storage/session";
+import { logoutFromLocalStorage } from "../services/storage/lifecycle";
+import { saveDrive } from "../services/storage/drive";
 import {
   readRemoteSessionState,
   writeRemoteSessionState,
   type KnownSecondaryAccount,
-} from "../services/app-storage.ts";
+} from "../services/app-storage";
 import {
   getDriveStorageKey,
   removeLocalStorageKey,
-} from "../services/browser/storage.ts";
+} from "../services/storage/storage";
 import {
   createDriveRefreshSecretKey,
   deleteSecret,
-} from "../services/security/secret-storage.ts";
+} from "../platform/secret-storage";
 
 interface SessionContextType {
   session: Session;
@@ -51,7 +67,7 @@ interface SessionContextType {
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 const initializeSessionFromLocalStorage = (): Session =>
-  RetreivePersistentSession();
+  retreivePersistentSession();
 
 interface PerDriveSettingsPayload extends DriveSettings {
   version: 1;
@@ -197,7 +213,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
       mergedKnownSecondaryAccounts,
     });
 
-    SavePersistentSession(session);
+    savePersistentSession(session);
 
     // Don't write to remote storage until the initial hydration of known secondary
     // accounts has completed for this primary drive. Writing before hydration would
@@ -251,7 +267,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             : [],
       };
 
-      SaveDrive(primaryDrive);
+      saveDrive(primaryDrive);
       return newSession;
     });
   }, []);
@@ -290,7 +306,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         ...prev,
         secondaryDrives: newSecondaryDrives,
       };
-      SaveDrive(newSecondaryDrive);
+      saveDrive(newSecondaryDrive);
       return newSession;
     });
   }, []);
@@ -361,7 +377,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const updateDrive = useCallback((drive: Drive) => {
-    SaveDrive(drive);
+    saveDrive(drive);
     setSessionState((prev) => {
       if (!prev.primaryDrive) {
         return prev;
@@ -414,7 +430,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         },
       );
 
-      SaveDrive(nextDrive);
+      saveDrive(nextDrive);
       void writePerDriveSettings(nextDrive, usageLimitPercent);
 
       setSessionState((prev) => ({
@@ -467,7 +483,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(() => {
     setSessionState(emptySession);
-    LogoutFromLocalStorage();
+    logoutFromLocalStorage();
   }, []);
 
   const value = useMemo(

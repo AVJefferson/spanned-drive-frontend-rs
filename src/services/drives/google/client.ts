@@ -12,7 +12,7 @@ import type {
   DriveItemMetadata,
   DriveListChildrenResponse,
   DriveUploadResult,
-} from "../../contexts/Drive";
+} from "../types";
 
 const backendUrl = import.meta.env.VITE_SDRIVE_BACKEND_URL as string;
 const backendAuthToken = import.meta.env

@@ -1,5 +1,5 @@
-import type { Drive } from "../../contexts/Drive";
-import type { LogicalFolder } from "../../contexts/LogicalFolderTypes";
+import type { Drive } from "../drives/types";
+import type { LogicalFolder } from "../../contexts/FoldersContext";
 import type { DriveCandidate, QuotaReservation } from "./types";
 
 const DEFAULT_LIMIT_PERCENT = 85;

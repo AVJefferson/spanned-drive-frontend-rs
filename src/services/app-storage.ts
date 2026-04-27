@@ -1,5 +1,4 @@
 import type { Drive, DriveReference } from "./drives/types";
-import type { PersistedSession } from "../contexts/SessionContext";
 import type { LogicalFolder } from "../contexts/FoldersContext";
 import {
   STORAGE_KEYS,
@@ -9,12 +8,25 @@ import {
 
 // ---------------------------------------------------------------------------
 // File name constants
+//
+// We deliberately avoid the legacy `sdrive-session.json` and
+// `sdrive-folders.json` filenames. Known secondary accounts now use the
+// dedicated backend registry (`get_secondary_drives` / `set_secondary_drive`).
+// Rich logical-folder metadata lives in `sdrive-logical-folders.json`, written
+// through `set_appdata_file_by_name` with the heartbeat lock helper below.
 // ---------------------------------------------------------------------------
 
-const SESSION_STORAGE_FILE = "sdrive-session.json";
-const FOLDERS_STORAGE_FILE = "sdrive-folders.json";
-const SESSION_LOCK_FILE = "sdrive-session.lock.json";
-const FOLDERS_LOCK_FILE = "sdrive-folders.lock.json";
+const LOGICAL_FOLDERS_FILE = "sdrive-logical-folders.json";
+const LOGICAL_FOLDERS_LOCK_FILE = "sdrive-logical-folders.lock.json";
+
+// Secondary drive refresh tokens are mirrored into the primary drive's
+// appdata so the user can re-attach all secondary drives by signing back in
+// with just the primary. The file lives in the primary drive's app-private
+// scope (e.g. Google Drive's `appDataFolder`), accessible only via OAuth
+// tokens for this application.
+const SECONDARY_CREDENTIALS_FILE = "sdrive-secondary-credentials.json";
+const SECONDARY_CREDENTIALS_LOCK_FILE =
+  "sdrive-secondary-credentials.lock.json";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,15 +34,19 @@ const FOLDERS_LOCK_FILE = "sdrive-folders.lock.json";
 
 export interface KnownSecondaryAccount extends DriveReference {}
 
-export interface RemoteSessionState {
+export interface StoredSecondaryCredential extends DriveReference {
+  refresh_token: string;
+  updatedAt: number;
+}
+
+export interface RemoteSecondaryCredentialsState {
   version: 1;
   updatedAt: number;
-  session: PersistedSession;
-  knownSecondaryAccounts: KnownSecondaryAccount[];
+  credentials: StoredSecondaryCredential[];
 }
 
 export interface RemoteFoldersState {
-  version: 1;
+  version: 3;
   updatedAt: number;
   logicalFolders: LogicalFolder[];
 }
@@ -44,27 +60,26 @@ interface WriteLock {
 // Empty states
 // ---------------------------------------------------------------------------
 
-const EMPTY_SESSION_STATE: RemoteSessionState = {
-  version: 1,
-  updatedAt: 0,
-  session: { primaryDrive: null, secondaryDrives: [] },
-  knownSecondaryAccounts: [],
-};
-
 const EMPTY_FOLDERS_STATE: RemoteFoldersState = {
-  version: 1,
+  version: 3,
   updatedAt: 0,
   logicalFolders: [],
 };
 
 // ---------------------------------------------------------------------------
 // Lock constants
+//
+// Heartbeat keeps the lock fresh while the writer is active, so the stale
+// threshold only kicks in when the writer process has died (crashed tab,
+// network failure mid-write, etc.). Verify delay covers Drive's eventual
+// consistency window.
 // ---------------------------------------------------------------------------
 
+const LOCK_HEARTBEAT_MS = 10_000;
 const LOCK_STALE_MS = 30_000;
 const LOCK_VERIFY_DELAY_MS = 400;
-const MAX_LOCK_RETRIES = 6;
-const LOCK_RETRY_BASE_MS = 200;
+const MAX_LOCK_RETRIES = 8;
+const LOCK_RETRY_BASE_MS = 250;
 
 // ---------------------------------------------------------------------------
 // Normalization helpers
@@ -93,19 +108,6 @@ function normalizeKnownSecondaryAccounts(
   return Array.from(deduped.values());
 }
 
-function normalizeSessionState(
-  value: Partial<RemoteSessionState> | null | undefined,
-): RemoteSessionState {
-  return {
-    version: 1,
-    updatedAt: Number(value?.updatedAt || 0),
-    session: value?.session || EMPTY_SESSION_STATE.session,
-    knownSecondaryAccounts: normalizeKnownSecondaryAccounts(
-      value?.knownSecondaryAccounts,
-    ),
-  };
-}
-
 function normalizeFoldersState(
   value: Partial<RemoteFoldersState> | null | undefined,
 ): RemoteFoldersState {
@@ -114,7 +116,7 @@ function normalizeFoldersState(
     : EMPTY_FOLDERS_STATE.logicalFolders;
 
   return {
-    version: 1,
+    version: 3,
     updatedAt: Number(value?.updatedAt || 0),
     logicalFolders: rawFolders.map((folder) => ({
       ...folder,
@@ -125,20 +127,8 @@ function normalizeFoldersState(
 }
 
 // ---------------------------------------------------------------------------
-// Local cache helpers
+// Local cache helpers (folders)
 // ---------------------------------------------------------------------------
-
-export function readRemoteSessionStateCache(): RemoteSessionState {
-  const cached = readLocalStorageJson<Partial<RemoteSessionState>>(
-    STORAGE_KEYS.remoteSessionStateCache,
-    EMPTY_SESSION_STATE,
-  );
-  return normalizeSessionState(cached);
-}
-
-export function writeRemoteSessionStateCache(value: RemoteSessionState) {
-  return writeLocalStorageJson(STORAGE_KEYS.remoteSessionStateCache, value);
-}
 
 export function readRemoteFoldersStateCache(): RemoteFoldersState {
   const cached = readLocalStorageJson<Partial<RemoteFoldersState>>(
@@ -153,40 +143,81 @@ export function writeRemoteFoldersStateCache(value: RemoteFoldersState) {
 }
 
 // ---------------------------------------------------------------------------
-// Mutex helpers
+// Lock primitives (heartbeat-based)
 // ---------------------------------------------------------------------------
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function acquireRemoteLock(drive: Drive, lockFile: string): Promise<string> {
+interface LockHandle {
+  lockId: string;
+  release: () => Promise<void>;
+}
+
+async function acquireRemoteLock(
+  drive: Drive,
+  lockFile: string,
+): Promise<LockHandle> {
   for (let attempt = 0; attempt < MAX_LOCK_RETRIES; attempt++) {
     if (attempt > 0) {
       await delay(LOCK_RETRY_BASE_MS * 2 ** (attempt - 1));
     }
 
-    // Check for an existing live lock.
+    // A live lock means another writer is heartbeating. Skip and retry.
     const existing = await drive.read_app_storage_json<WriteLock | null>(lockFile);
-    if (existing && (Date.now() - existing.acquiredAt) < LOCK_STALE_MS) {
-      // Lock is held by another writer; retry.
+    if (existing && Date.now() - existing.acquiredAt < LOCK_STALE_MS) {
       continue;
     }
 
-    // Claim the lock.
     const lockId = crypto.randomUUID();
     await drive.write_app_storage_json<WriteLock>(lockFile, {
       lockId,
       acquiredAt: Date.now(),
     });
 
-    // Wait for eventual consistency, then verify our lock is still in place.
+    // Drive is eventually-consistent; wait then verify our claim survived.
     await delay(LOCK_VERIFY_DELAY_MS);
     const verified = await drive.read_app_storage_json<WriteLock | null>(lockFile);
-    if (verified?.lockId === lockId) {
-      return lockId;
+    if (verified?.lockId !== lockId) {
+      continue;
     }
-    // Lock was overwritten by a concurrent writer; retry.
+
+    // Heartbeat keeps `acquiredAt` fresh so other writers see this lock as
+    // alive. If the writer crashes, the heartbeat stops and the stale-lock
+    // threshold takes over within `LOCK_STALE_MS`.
+    let released = false;
+    const heartbeat = setInterval(() => {
+      if (released) return;
+      void drive
+        .write_app_storage_json<WriteLock>(lockFile, {
+          lockId,
+          acquiredAt: Date.now(),
+        })
+        .catch((error) => {
+          console.warn(`Lock heartbeat failed for ${lockFile}`, error);
+        });
+    }, LOCK_HEARTBEAT_MS);
+
+    const release = async () => {
+      if (released) return;
+      released = true;
+      clearInterval(heartbeat);
+      try {
+        await drive.delete_app_storage_json(lockFile);
+      } catch (error) {
+        console.warn(`Unable to release remote lock ${lockFile}`, error);
+        // Fallback: blank the lock so the next writer doesn't see a stale
+        // claim while the stale-lock timer is still running.
+        try {
+          await drive.write_app_storage_json<null>(lockFile, null);
+        } catch {
+          // Best-effort; the stale-lock timeout will eventually unblock.
+        }
+      }
+    };
+
+    return { lockId, release };
   }
 
   throw new Error(
@@ -194,94 +225,81 @@ async function acquireRemoteLock(drive: Drive, lockFile: string): Promise<string
   );
 }
 
-async function releaseRemoteLock(drive: Drive, lockFile: string): Promise<void> {
+/**
+ * Run `mutator` while holding a heartbeat lock on `lockFile`. The mutator
+ * receives the latest committed value of `dataFile` and returns the value to
+ * persist. The lock is always released (and deleted) on completion.
+ *
+ * The flow guarantees the lock-read-verify-write pattern:
+ *   1. Acquire lock (heartbeat keeps it alive while we work)
+ *   2. Re-read `dataFile` so the mutator sees the freshest committed state
+ *   3. Mutator decides whether to overwrite (it can return the unchanged
+ *      `latest` to abort the write)
+ *   4. Write the result, then release+delete the lock
+ */
+export async function updateRemoteJson<T>(
+  drive: Drive,
+  dataFile: string,
+  lockFile: string,
+  mutator: (latest: T | null) => T | null | Promise<T | null>,
+): Promise<T | null> {
+  const lock = await acquireRemoteLock(drive, lockFile);
   try {
-    await drive.delete_app_storage_json(lockFile);
-  } catch (error) {
-    console.warn(`Unable to release remote lock ${lockFile}`, error);
-    // Fallback: blank out the lock so a future writer doesn't see a stale
-    // claim if the delete failed.
-    try {
-      await drive.write_app_storage_json<null>(lockFile, null);
-    } catch {
-      // Best-effort; the stale-lock timeout will eventually unblock writers.
+    const latest = await drive.read_app_storage_json<T>(dataFile);
+    const next = await mutator(latest);
+    if (next === null || next === latest) {
+      // Mutator chose not to overwrite (e.g. nothing changed, or remote is
+      // newer than our payload).
+      return latest;
     }
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Remote session state
-// ---------------------------------------------------------------------------
-
-export async function readRemoteSessionState(
-  primaryDrive: Drive | null,
-): Promise<RemoteSessionState> {
-  if (!primaryDrive) {
-    return readRemoteSessionStateCache();
-  }
-
-  try {
-    const raw = await primaryDrive.read_app_storage_json<Partial<RemoteSessionState>>(
-      SESSION_STORAGE_FILE,
-    );
-    const normalized = normalizeSessionState(raw);
-    writeRemoteSessionStateCache(normalized);
-    return normalized;
-  } catch (error) {
-    console.warn("Unable to read remote session state, using cache", error);
-    return readRemoteSessionStateCache();
-  }
-}
-
-export async function writeRemoteSessionState(
-  primaryDrive: Drive | null,
-  partial: Partial<RemoteSessionState>,
-): Promise<RemoteSessionState> {
-  if (!primaryDrive) {
-    const current = readRemoteSessionStateCache();
-    const next: RemoteSessionState = {
-      version: 1,
-      updatedAt: Date.now(),
-      session: partial.session ?? current.session,
-      knownSecondaryAccounts: normalizeKnownSecondaryAccounts(
-        partial.knownSecondaryAccounts ?? current.knownSecondaryAccounts,
-      ),
-    };
-    writeRemoteSessionStateCache(next);
+    await drive.write_app_storage_json<T>(dataFile, next);
     return next;
-  }
-
-  let lockId: string | null = null;
-  try {
-    lockId = await acquireRemoteLock(primaryDrive, SESSION_LOCK_FILE);
-
-    // Re-read after acquiring the lock to get the latest committed state.
-    const latest = await primaryDrive.read_app_storage_json<Partial<RemoteSessionState>>(
-      SESSION_STORAGE_FILE,
-    );
-    const latestNormalized = normalizeSessionState(latest);
-
-    const merged: RemoteSessionState = {
-      version: 1,
-      updatedAt: Date.now(),
-      session: partial.session ?? latestNormalized.session,
-      knownSecondaryAccounts: normalizeKnownSecondaryAccounts(
-        partial.knownSecondaryAccounts ?? latestNormalized.knownSecondaryAccounts,
-      ),
-    };
-
-    await primaryDrive.write_app_storage_json(SESSION_STORAGE_FILE, merged);
-    writeRemoteSessionStateCache(merged);
-    return merged;
   } finally {
-    if (lockId !== null) {
-      await releaseRemoteLock(primaryDrive, SESSION_LOCK_FILE);
-    }
+    await lock.release();
   }
 }
 
 // ---------------------------------------------------------------------------
-// Remote folders state
+// Known secondary accounts (dedicated backend registry)
+// ---------------------------------------------------------------------------
+
+export async function readKnownSecondaryAccounts(
+  primaryDrive: Drive | null,
+): Promise<KnownSecondaryAccount[]> {
+  if (!primaryDrive) {
+    return [];
+  }
+  try {
+    const entries = await primaryDrive.list_known_secondary_accounts();
+    return normalizeKnownSecondaryAccounts(entries);
+  } catch (error) {
+    console.warn("Unable to read known secondary accounts", error);
+    return [];
+  }
+}
+
+export async function registerKnownSecondaryAccount(
+  primaryDrive: Drive | null,
+  account: KnownSecondaryAccount,
+): Promise<void> {
+  if (!primaryDrive || !account?.provider || !account?.email) {
+    return;
+  }
+  try {
+    await primaryDrive.register_known_secondary_account({
+      provider: account.provider,
+      email: account.email,
+    });
+  } catch (error) {
+    console.warn(
+      `Unable to register secondary account ${account.provider}:${account.email}`,
+      error,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Logical folders (single appdata file with heartbeat-locked writes)
 // ---------------------------------------------------------------------------
 
 export async function readRemoteFoldersState(
@@ -293,7 +311,7 @@ export async function readRemoteFoldersState(
 
   try {
     const raw = await primaryDrive.read_app_storage_json<Partial<RemoteFoldersState>>(
-      FOLDERS_STORAGE_FILE,
+      LOGICAL_FOLDERS_FILE,
     );
     const normalized = normalizeFoldersState(raw);
     writeRemoteFoldersStateCache(normalized);
@@ -311,7 +329,7 @@ export async function writeRemoteFoldersState(
   if (!primaryDrive) {
     const current = readRemoteFoldersStateCache();
     const next: RemoteFoldersState = {
-      version: 1,
+      version: 3,
       updatedAt: Date.now(),
       logicalFolders: (partial.logicalFolders ?? current.logicalFolders).map(
         (folder) => ({ ...folder, items: [] }),
@@ -321,30 +339,225 @@ export async function writeRemoteFoldersState(
     return next;
   }
 
-  let lockId: string | null = null;
-  try {
-    lockId = await acquireRemoteLock(primaryDrive, FOLDERS_LOCK_FILE);
-
-    // Re-read after acquiring the lock to get the latest committed state.
-    const latest = await primaryDrive.read_app_storage_json<Partial<RemoteFoldersState>>(
-      FOLDERS_STORAGE_FILE,
-    );
-    const latestNormalized = normalizeFoldersState(latest);
-
-    const merged: RemoteFoldersState = {
-      version: 1,
-      updatedAt: Date.now(),
-      logicalFolders: (partial.logicalFolders ?? latestNormalized.logicalFolders).map(
+  const result = await updateRemoteJson<RemoteFoldersState>(
+    primaryDrive,
+    LOGICAL_FOLDERS_FILE,
+    LOGICAL_FOLDERS_LOCK_FILE,
+    (latest) => {
+      const latestNormalized = normalizeFoldersState(latest);
+      const incoming = (partial.logicalFolders ?? latestNormalized.logicalFolders).map(
         (folder) => ({ ...folder, items: [] }),
-      ),
-    };
+      );
 
-    await primaryDrive.write_app_storage_json(FOLDERS_STORAGE_FILE, merged);
-    writeRemoteFoldersStateCache(merged);
-    return merged;
-  } finally {
-    if (lockId !== null) {
-      await releaseRemoteLock(primaryDrive, FOLDERS_LOCK_FILE);
+      // Pre-write verification: only overwrite if our payload is at least as
+      // fresh as what's on the server. Otherwise drop our write so the more
+      // recent remote state wins.
+      const incomingMostRecent = incoming.reduce(
+        (max, folder) => Math.max(max, Number(folder.updatedAt) || 0),
+        0,
+      );
+      const remoteMostRecent = (latestNormalized.logicalFolders || []).reduce(
+        (max, folder) => Math.max(max, Number(folder.updatedAt) || 0),
+        0,
+      );
+      if (incomingMostRecent > 0 && incomingMostRecent < remoteMostRecent) {
+        return latest;
+      }
+
+      return {
+        version: 3,
+        updatedAt: Date.now(),
+        logicalFolders: incoming,
+      };
+    },
+  );
+
+  const merged = normalizeFoldersState(result);
+  writeRemoteFoldersStateCache(merged);
+  return merged;
+}
+
+/**
+ * Best-effort mirror of a newly created logical folder into the dedicated
+ * backend registry (`set_logical_folder`). The registry stores only
+ * `{name, drives}`; rich settings (packing, listing, status, root folder ids)
+ * remain in the locked appdata file above. The dedicated endpoint is no-op-
+ * if-exists, so this is safe to call repeatedly.
+ */
+export async function mirrorLogicalFolderToRegistry(
+  primaryDrive: Drive | null,
+  folder: LogicalFolder,
+): Promise<void> {
+  if (!primaryDrive) {
+    return;
+  }
+  const drives = (folder.backends || []).map((backend) => [
+    backend.provider,
+    backend.email,
+    backend.rootFolderId,
+  ]);
+  if (drives.length === 0) {
+    return;
+  }
+  try {
+    await primaryDrive.register_logical_folder(folder.name, drives);
+  } catch (error) {
+    console.warn(
+      `Unable to mirror logical folder "${folder.name}" to registry`,
+      error,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Secondary drive credentials (refresh tokens mirrored on primary appdata)
+// ---------------------------------------------------------------------------
+
+function normalizeSecondaryCredentials(
+  value: Partial<RemoteSecondaryCredentialsState> | null | undefined,
+): RemoteSecondaryCredentialsState {
+  const raw = Array.isArray(value?.credentials) ? value.credentials : [];
+  const deduped = new Map<string, StoredSecondaryCredential>();
+  raw.forEach((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return;
     }
+    const provider = String(
+      (entry as { provider?: unknown }).provider || "",
+    ).trim();
+    const email = String((entry as { email?: unknown }).email || "").trim();
+    const refresh_token = String(
+      (entry as { refresh_token?: unknown }).refresh_token || "",
+    );
+    if (!provider || !email || !refresh_token) {
+      return;
+    }
+    const updatedAt = Number((entry as { updatedAt?: unknown }).updatedAt) || 0;
+    deduped.set(`${provider}:${email}`.toLowerCase(), {
+      provider,
+      email,
+      refresh_token,
+      updatedAt,
+    });
+  });
+
+  return {
+    version: 1,
+    updatedAt: Number(value?.updatedAt) || 0,
+    credentials: Array.from(deduped.values()),
+  };
+}
+
+export async function readRemoteSecondaryCredentials(
+  primaryDrive: Drive | null,
+): Promise<StoredSecondaryCredential[]> {
+  if (!primaryDrive) {
+    return [];
+  }
+  try {
+    const raw = await primaryDrive.read_app_storage_json<
+      Partial<RemoteSecondaryCredentialsState>
+    >(SECONDARY_CREDENTIALS_FILE);
+    return normalizeSecondaryCredentials(raw).credentials;
+  } catch (error) {
+    console.warn("Unable to read remote secondary credentials", error);
+    return [];
+  }
+}
+
+export async function upsertRemoteSecondaryCredential(
+  primaryDrive: Drive | null,
+  credential: { provider: string; email: string; refresh_token: string },
+): Promise<void> {
+  if (
+    !primaryDrive ||
+    !credential?.provider ||
+    !credential?.email ||
+    !credential?.refresh_token
+  ) {
+    return;
+  }
+  try {
+    await updateRemoteJson<RemoteSecondaryCredentialsState>(
+      primaryDrive,
+      SECONDARY_CREDENTIALS_FILE,
+      SECONDARY_CREDENTIALS_LOCK_FILE,
+      (latest) => {
+        const normalized = normalizeSecondaryCredentials(latest);
+        const existing = normalized.credentials.find(
+          (entry) =>
+            entry.provider === credential.provider &&
+            entry.email === credential.email,
+        );
+        if (existing && existing.refresh_token === credential.refresh_token) {
+          // Nothing changed; skip the write.
+          return latest;
+        }
+        const filtered = normalized.credentials.filter(
+          (entry) =>
+            !(
+              entry.provider === credential.provider &&
+              entry.email === credential.email
+            ),
+        );
+        return {
+          version: 1,
+          updatedAt: Date.now(),
+          credentials: [
+            ...filtered,
+            {
+              provider: credential.provider,
+              email: credential.email,
+              refresh_token: credential.refresh_token,
+              updatedAt: Date.now(),
+            },
+          ],
+        };
+      },
+    );
+  } catch (error) {
+    console.warn(
+      `Unable to mirror secondary credential for ${credential.provider}:${credential.email}`,
+      error,
+    );
+  }
+}
+
+export async function removeRemoteSecondaryCredential(
+  primaryDrive: Drive | null,
+  reference: { provider: string; email: string },
+): Promise<void> {
+  if (!primaryDrive || !reference?.provider || !reference?.email) {
+    return;
+  }
+  try {
+    await updateRemoteJson<RemoteSecondaryCredentialsState>(
+      primaryDrive,
+      SECONDARY_CREDENTIALS_FILE,
+      SECONDARY_CREDENTIALS_LOCK_FILE,
+      (latest) => {
+        const normalized = normalizeSecondaryCredentials(latest);
+        const next = normalized.credentials.filter(
+          (entry) =>
+            !(
+              entry.provider === reference.provider &&
+              entry.email === reference.email
+            ),
+        );
+        if (next.length === normalized.credentials.length) {
+          return latest;
+        }
+        return {
+          version: 1,
+          updatedAt: Date.now(),
+          credentials: next,
+        };
+      },
+    );
+  } catch (error) {
+    console.warn(
+      `Unable to remove secondary credential for ${reference.provider}:${reference.email}`,
+      error,
+    );
   }
 }

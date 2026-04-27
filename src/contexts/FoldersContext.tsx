@@ -99,7 +99,11 @@ export function createDefaultListingSettings(): LogicalDriveListingSettings {
 }
 
 import { useSession } from "./SessionContext";
-import { readRemoteFoldersState, writeRemoteFoldersState } from "../services/app-storage";
+import {
+  mirrorLogicalFolderToRegistry,
+  readRemoteFoldersState,
+  writeRemoteFoldersState,
+} from "../services/app-storage";
 import {
   STORAGE_KEYS,
   readLocalStorageJson,
@@ -423,9 +427,15 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
         mergeLogicalFolders(current, [logicalFolder]),
       );
 
+      // Best-effort mirror into the dedicated backend registry
+      // (`set_logical_folder`). The dedicated endpoint is no-op-if-exists and
+      // only stores `{name, drives}`; rich settings remain in the locked
+      // appdata file managed by writeRemoteFoldersState.
+      void mirrorLogicalFolderToRegistry(session.primaryDrive, logicalFolder);
+
       return logicalFolder;
     },
-    [],
+    [session.primaryDrive],
   );
 
   const replaceLogicalFolder = useCallback(

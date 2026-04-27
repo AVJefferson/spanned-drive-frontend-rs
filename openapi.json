@@ -1,0 +1,1105 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Spanned Drive Backend",
+    "version": "0.1.0",
+    "description": "OpenAPI for axum service in this repo. Authz middleware uses `Authorization: Bearer <token>` and checks token permissions stored server-side."
+  },
+  "servers": [
+    {
+      "url": "http://{host}:{port}",
+      "variables": {
+        "host": {
+          "default": "127.0.0.1",
+          "description": "Set from `SERVER_HOST` env var."
+        },
+        "port": {
+          "default": "3000",
+          "description": "Set from `SERVER_PORT` env var."
+        }
+      }
+    }
+  ],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Status" },
+    { "name": "OpenAPI" },
+    { "name": "Token" },
+    { "name": "Profile" },
+    { "name": "Drive" },
+    { "name": "Admin" }
+  ],
+  "paths": {
+    "/health/is_running": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness probe",
+        "description": "Returns 200 when server running.",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/status": {
+      "get": {
+        "tags": ["Status"],
+        "summary": "Service status",
+        "description": "Returns plain text status string.",
+        "responses": {
+          "200": {
+            "description": "Status text",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "examples": {
+                  "working": { "value": "Working" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi": {
+      "get": {
+        "tags": ["OpenAPI"],
+        "summary": "OpenAPI document",
+        "description": "Returns embedded `openapi.json` for this service. No auth. Response `Content-Type` is `text/plain` (JSON body).",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1 document (JSON as UTF-8 text)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "contentMediaType": "application/json",
+                  "contentEncoding": "identity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/token/google-drive/refresh_token": {
+      "post": {
+        "tags": ["Token"],
+        "summary": "Exchange auth code for refresh token",
+        "description": "Protected by authz middleware; requires permission `token`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GenerateTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token response (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/token/google-drive/access_token": {
+      "post": {
+        "tags": ["Token"],
+        "summary": "Exchange refresh token for access token",
+        "description": "Protected by authz middleware; requires permission `token`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RefreshTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token response (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/profile/google": {
+      "post": {
+        "tags": ["Profile"],
+        "summary": "Fetch Google user profile",
+        "description": "Protected by authz middleware; requires permission `profile`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccessTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProfilePayload" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/get_appdata_file": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Get appdata file contents",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GetAppdataFilePayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File contents (string)",
+            "content": {
+              "application/json": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/get_logical_folders": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "List logical folders",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccessTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logical folder names/ids (string list)",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/set_logical_folder": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Create/update logical folder",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SetLogicalFolderPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "type": "boolean" },
+                "examples": { "ok": { "value": true } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/get_secondary_drives": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "List secondary drives",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccessTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Secondary drive list",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/set_secondary_drive": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Set secondary drive",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SetSecondaryDrivePayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "type": "boolean" },
+                "examples": { "ok": { "value": true } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/get_primary_file_id": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Get primary file id",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccessTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Primary file id",
+            "content": {
+              "application/json": {
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/set_as_primary": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Set current drive as primary",
+        "description": "Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccessTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "type": "boolean" },
+                "examples": { "ok": { "value": true } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/drive_about": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Get Drive about info",
+        "description": "Returns info about the user's Google Drive account. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AccessTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Drive about object (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/list_children": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "List children of a folder",
+        "description": "Lists files/folders under a given parent. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ListChildrenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File list (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/file_metadata": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Get file metadata",
+        "description": "Returns rich metadata for a file by ID. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/FileMetadataPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File metadata (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/create_folder": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Create a folder",
+        "description": "Creates a new folder in Google Drive. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateFolderPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created folder metadata (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/upload_file": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Upload a file",
+        "description": "Uploads a file to Google Drive under the specified parent. Accepts `multipart/form-data`. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["access_token", "parent_id", "file"],
+                "properties": {
+                  "access_token": { "type": "string", "minLength": 1 },
+                  "parent_id": { "type": "string", "minLength": 1 },
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Uploaded file metadata (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/delete_item": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Delete a file or folder",
+        "description": "Deletes a Drive item by ID. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeleteItemPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "type": "boolean" },
+                "examples": { "ok": { "value": true } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/copy_item": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Copy a file or folder",
+        "description": "Copies a Drive item to a new parent. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CopyItemPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Copied item metadata (passthrough JSON)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/JsonValue" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/download_file": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Download a file",
+        "description": "Downloads raw file bytes from Google Drive. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DownloadFilePayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Raw file bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/get_appdata_file_by_name": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Get appdata file by name",
+        "description": "Reads an appData file by name; returns null if not found. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GetAppdataFileByNamePayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File contents or null",
+            "content": {
+              "application/json": {
+                "schema": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/drive/google-drive/set_appdata_file_by_name": {
+      "post": {
+        "tags": ["Drive"],
+        "summary": "Set appdata file by name",
+        "description": "Creates or updates an appData file by name. Protected by authz middleware; requires permission `drive`.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "drive",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SetAppdataFileByNamePayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": { "type": "boolean" },
+                "examples": { "ok": { "value": true } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/admin/auth/tokens": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List auth tokens",
+        "description": "Returns all auth tokens and their permissions. Protected by authz middleware; requires permission `admin`. Route currently disabled in routing configuration.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "admin",
+        "responses": {
+          "200": {
+            "description": "Token list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/AdminTokenPayload" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Create auth token",
+        "description": "Adds a new auth token with the specified permissions. Protected by authz middleware; requires permission `admin`. Route currently disabled in routing configuration.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "admin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminTokenPayload" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token created",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "examples": { "created": { "value": "Token created" } }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "text/plain": { "schema": { "$ref": "#/components/schemas/ErrorMessage" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/admin/auth/tokens/{token}": {
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete auth token",
+        "description": "Removes an auth token by value. Protected by authz middleware; requires permission `admin`. Route currently disabled in routing configuration.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "admin",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Token deleted",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "examples": { "deleted": { "value": "Token deleted" } }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "text/plain": { "schema": { "$ref": "#/components/schemas/ErrorMessage" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": {
+            "description": "Token not found",
+            "content": {
+              "text/plain": {
+                "schema": { "$ref": "#/components/schemas/ErrorMessage" },
+                "examples": { "not_found": { "value": "Token not found" } }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Update token permissions",
+        "description": "Replaces the permissions list for an existing token. Protected by authz middleware; requires permission `admin`. Route currently disabled in routing configuration.",
+        "security": [{ "bearerAuth": [] }],
+        "x-required-permission": "admin",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminPermissionsPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token updated",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string" },
+                "examples": { "updated": { "value": "Token updated" } }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "text/plain": { "schema": { "$ref": "#/components/schemas/ErrorMessage" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": {
+            "description": "Token not found",
+            "content": {
+              "text/plain": {
+                "schema": { "$ref": "#/components/schemas/ErrorMessage" },
+                "examples": { "not_found": { "value": "Token not found" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque"
+      }
+    },
+    "schemas": {
+      "AccessTokenPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 }
+        }
+      },
+      "RefreshTokenPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["refresh_token"],
+        "properties": {
+          "refresh_token": { "type": "string", "minLength": 1 }
+        }
+      },
+      "GenerateTokenPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "code_verifier", "redirect_uri"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "code_verifier": { "type": "string", "minLength": 1 },
+          "redirect_uri": { "type": "string", "minLength": 1 }
+        }
+      },
+      "GetAppdataFilePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "SetSecondaryDrivePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "new_secondary_drive_email", "drive_provider"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "new_secondary_drive_email": { "type": "string", "minLength": 1 },
+          "drive_provider": { "type": "string", "minLength": 1 }
+        }
+      },
+      "SetLogicalFolderPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "new_logical_folder_name", "drives"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "new_logical_folder_name": { "type": "string", "minLength": 1 },
+          "drives": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "prefixItems": [{ "type": "string" }, { "type": "string" }],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        }
+      },
+      "ProfilePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sub", "email", "email_verified", "name", "picture"],
+        "properties": {
+          "sub": { "type": "string" },
+          "email": { "type": "string" },
+          "email_verified": { "type": "boolean" },
+          "name": { "type": "string" },
+          "picture": { "type": "string" }
+        }
+      },
+      "ErrorMessage": {
+        "type": "string",
+        "description": "Plain-text error message."
+      },
+      "JsonValue": {
+        "description": "Any JSON value (passthrough).",
+        "type": ["null", "boolean", "number", "string", "array", "object"]
+      },
+      "GetAppdataFileByNamePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_name"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_name": { "type": "string", "minLength": 1 }
+        }
+      },
+      "SetAppdataFileByNamePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_name", "content"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_name": { "type": "string", "minLength": 1 },
+          "content": { "type": "string" }
+        }
+      },
+      "ListChildrenPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "parent_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "parent_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "FileMetadataPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "CreateFolderPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "name", "parent_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "parent_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "DeleteItemPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "CopyItemPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_id", "parent_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_id": { "type": "string", "minLength": 1 },
+          "parent_id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string" }
+        }
+      },
+      "DownloadFilePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["access_token", "file_id"],
+        "properties": {
+          "access_token": { "type": "string", "minLength": 1 },
+          "file_id": { "type": "string", "minLength": 1 }
+        }
+      },
+      "AdminTokenPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token", "permissions"],
+        "properties": {
+          "token": { "type": "string", "minLength": 1 },
+          "permissions": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "AdminPermissionsPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["permissions"],
+        "properties": {
+          "permissions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized",
+        "content": {
+          "text/plain": {
+            "schema": { "$ref": "#/components/schemas/ErrorMessage" },
+            "examples": {
+              "missing_auth_header": { "value": "Missing authorization header" },
+              "invalid_token": { "value": "Invalid token" }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Forbidden",
+        "content": {
+          "text/plain": {
+            "schema": { "$ref": "#/components/schemas/ErrorMessage" },
+            "examples": {
+              "insufficient_permissions": { "value": "Insufficient permissions" }
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "External client not configured/available",
+        "content": {
+          "text/plain": {
+            "schema": { "$ref": "#/components/schemas/ErrorMessage" },
+            "examples": {
+              "client_not_available": { "value": "External client is not configured or available" }
+            }
+          }
+        }
+      },
+      "BadGateway": {
+        "description": "External service error",
+        "content": {
+          "text/plain": {
+            "schema": { "$ref": "#/components/schemas/ErrorMessage" }
+          }
+        }
+      }
+    }
+  }
+}

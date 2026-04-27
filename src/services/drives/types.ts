@@ -82,6 +82,28 @@ export interface DriveSnapshot extends DriveReference {
   delete_app_storage_json: (key: string) => Promise<void>;
 
   /**
+   * Dedicated registries for cross-app discovery. These mirror the backend's
+   * `get_secondary_drives` / `set_secondary_drive` and `get_logical_folders`
+   * / `set_logical_folder` endpoints. Both `register_*` calls are no-op-if-
+   * exists (matching the backend's behavior); there is no update or delete on
+   * these dedicated registries. Mutable per-folder data lives in regular
+   * appdata files written via `write_app_storage_json`.
+   */
+  list_known_secondary_accounts: () => Promise<
+    Array<{ provider: string; email: string }>
+  >;
+  register_known_secondary_account: (
+    account: { provider: string; email: string },
+  ) => Promise<void>;
+  list_logical_folder_registry: () => Promise<
+    Array<{ file_id: string; name: string; drives: string[][] }>
+  >;
+  register_logical_folder: (
+    folder_name: string,
+    drives: string[][],
+  ) => Promise<void>;
+
+  /**
    * Resolve the parent folder id under which the logical-folder root should be
    * created on this drive. Defaults to "root". Providers that need a hidden
    * container (e.g. Google Drive's `.spanneddrive`) override this.

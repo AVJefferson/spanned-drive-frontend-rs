@@ -353,3 +353,194 @@ export async function deleteGoogleAppStorageJson(
     ),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Dedicated registries (mirror of backend appdata.rs filename scheme)
+//
+// These helpers replicate the Rust backend's secondary-drive / logical-folder
+// appData storage so Tauri-runtime drives can talk to the same registry the
+// browser-runtime backend produces. Filename encodings MUST stay byte-for-byte
+// compatible with `external_systems/google/helpers.rs`.
+// ---------------------------------------------------------------------------
+
+const SECONDARY_DRIVE_PREFIX = "sdrive---secondary-drive---";
+const LOGICAL_FOLDER_PREFIX = "sdrive---logical-folder---";
+
+function encodeEmailForFilename(email: string): string {
+  return email.replace(/@/g, "__at__").replace(/\./g, "__dot__");
+}
+
+function decodeEmailFromFilename(encoded: string): string {
+  return encoded.replace(/__at__/g, "@").replace(/__dot__/g, ".");
+}
+
+function encodeDriveNameForFilename(name: string): string {
+  return name
+    .replace(/@/g, "__at__")
+    .replace(/\./g, "__dot__")
+    .replace(/\//g, "__slash__")
+    .replace(/\\/g, "__backslash__")
+    .replace(/ /g, "__space__");
+}
+
+function decodeDriveNameFromFilename(encoded: string): string {
+  return encoded
+    .replace(/__at__/g, "@")
+    .replace(/__dot__/g, ".")
+    .replace(/__slash__/g, "/")
+    .replace(/__backslash__/g, "\\")
+    .replace(/__space__/g, " ");
+}
+
+function secondaryDriveFilename(
+  primaryEmailEncoded: string,
+  provider: string,
+  secondaryEmailEncoded: string,
+): string {
+  return `${SECONDARY_DRIVE_PREFIX}${primaryEmailEncoded}---${provider}---${secondaryEmailEncoded}.json`;
+}
+
+function logicalFolderFilename(
+  primaryEmailEncoded: string,
+  folderNameEncoded: string,
+): string {
+  return `${LOGICAL_FOLDER_PREFIX}${primaryEmailEncoded}---${folderNameEncoded}.json`;
+}
+
+async function listAppDataFilesByQuery(
+  drive: Drive,
+  query: string,
+): Promise<AppStorageFileEntry[]> {
+  const fields = encodeURIComponent("files(id,name,modifiedTime)");
+  const response = await authorizedFetch<{ files?: AppStorageFileEntry[] }>(
+    drive,
+    `${GOOGLE_DRIVE_API}/files?spaces=appDataFolder&q=${encodeURIComponent(query)}&fields=${fields}`,
+  );
+  return response.files || [];
+}
+
+export interface GoogleSecondaryDriveEntry {
+  file_id: string;
+  provider: string;
+  email: string;
+}
+
+export async function listGoogleSecondaryDrives(
+  drive: Drive,
+): Promise<GoogleSecondaryDriveEntry[]> {
+  const primaryEnc = encodeEmailForFilename(drive.email);
+  const files = await listAppDataFilesByQuery(
+    drive,
+    `name contains '${SECONDARY_DRIVE_PREFIX}${primaryEnc}---'`,
+  );
+
+  const results: GoogleSecondaryDriveEntry[] = [];
+  for (const file of files) {
+    if (!file?.id || !file.name) continue;
+    const stripped = file.name
+      .replace(SECONDARY_DRIVE_PREFIX, "")
+      .replace(`${primaryEnc}---`, "")
+      .replace(/\.json$/, "");
+    const sepIndex = stripped.indexOf("---");
+    if (sepIndex <= 0) continue;
+    const provider = stripped.slice(0, sepIndex);
+    const emailEnc = stripped.slice(sepIndex + 3);
+    if (!provider || !emailEnc) continue;
+    results.push({
+      file_id: file.id,
+      provider,
+      email: decodeEmailFromFilename(emailEnc),
+    });
+  }
+  return results;
+}
+
+export async function setGoogleSecondaryDrive(
+  drive: Drive,
+  provider: string,
+  secondaryEmail: string,
+): Promise<void> {
+  const primaryEnc = encodeEmailForFilename(drive.email);
+  const fileName = secondaryDriveFilename(
+    primaryEnc,
+    provider,
+    encodeEmailForFilename(secondaryEmail),
+  );
+
+  const { canonical } = await findGoogleAppStorageFile(drive, fileName);
+  if (canonical) {
+    return; // No-op-if-exists, matching backend behavior.
+  }
+
+  await writeGoogleAppStorageJson(drive, fileName, { new_file: true });
+}
+
+export interface GoogleLogicalFolderEntry {
+  file_id: string;
+  name: string;
+  drives: string[][];
+}
+
+export async function listGoogleLogicalFolders(
+  drive: Drive,
+): Promise<GoogleLogicalFolderEntry[]> {
+  const primaryEnc = encodeEmailForFilename(drive.email);
+  const files = await listAppDataFilesByQuery(
+    drive,
+    `name contains '${LOGICAL_FOLDER_PREFIX}${primaryEnc}---'`,
+  );
+
+  const results: GoogleLogicalFolderEntry[] = [];
+  for (const file of files) {
+    if (!file?.id || !file.name) continue;
+    const stripped = file.name
+      .replace(LOGICAL_FOLDER_PREFIX, "")
+      .replace(`${primaryEnc}---`, "")
+      .replace(/\.json$/, "");
+    const folderName = decodeDriveNameFromFilename(stripped);
+
+    let drives: string[][] = [];
+    try {
+      const accessToken = await drive.fetch_access_token();
+      const response = await googleDriveFetch(
+        `${GOOGLE_DRIVE_API}/files/${encodeURIComponent(file.id)}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (response.ok) {
+        const json = (await response.json()) as { drives?: unknown };
+        if (Array.isArray(json?.drives)) {
+          drives = json.drives.filter(
+            (entry): entry is string[] => Array.isArray(entry),
+          );
+        }
+      }
+    } catch {
+      // Best-effort; leave `drives` empty if read fails.
+    }
+
+    results.push({ file_id: file.id, name: folderName, drives });
+  }
+  return results;
+}
+
+export async function setGoogleLogicalFolder(
+  drive: Drive,
+  folderName: string,
+  drives: string[][],
+): Promise<void> {
+  const primaryEnc = encodeEmailForFilename(drive.email);
+  const fileName = logicalFolderFilename(
+    primaryEnc,
+    encodeDriveNameForFilename(folderName),
+  );
+
+  const { canonical } = await findGoogleAppStorageFile(drive, fileName);
+  if (canonical) {
+    return; // No-op-if-exists, matching backend behavior.
+  }
+
+  await writeGoogleAppStorageJson(drive, fileName, {
+    new_file: true,
+    drives,
+  });
+}

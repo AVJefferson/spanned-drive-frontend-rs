@@ -18,7 +18,11 @@ import {
   getOrCreateGoogleDriveFolderInParent,
   listGoogleDriveChildren,
   deleteGoogleAppStorageJson,
+  listGoogleLogicalFolders,
+  listGoogleSecondaryDrives,
   readGoogleAppStorageJson,
+  setGoogleLogicalFolder,
+  setGoogleSecondaryDrive,
   uploadGoogleDriveFile,
   writeGoogleAppStorageJson,
 } from "./files";
@@ -42,6 +46,10 @@ import {
   backendDownloadFile,
   backendGetAppdataByName,
   backendSetAppdataByName,
+  backendGetSecondaryDrives,
+  backendSetSecondaryDrive,
+  backendGetLogicalFolders,
+  backendSetLogicalFolder,
 } from "./client";
 
 
@@ -283,6 +291,45 @@ export class GoogleDrive implements Drive {
     // DELETE call client-side. Best-effort: callers should treat failures as
     // non-fatal (e.g. lock-file cleanup).
     await deleteGoogleAppStorageJson(this, key);
+  }
+
+  async list_known_secondary_accounts() {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      const remote = await backendGetSecondaryDrives(token);
+      return remote.map(({ provider, email }) => ({ provider, email }));
+    }
+    const direct = await listGoogleSecondaryDrives(this);
+    return direct.map(({ provider, email }) => ({ provider, email }));
+  }
+
+  async register_known_secondary_account(account: {
+    provider: string;
+    email: string;
+  }) {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      await backendSetSecondaryDrive(token, account.email, account.provider);
+      return;
+    }
+    await setGoogleSecondaryDrive(this, account.provider, account.email);
+  }
+
+  async list_logical_folder_registry() {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendGetLogicalFolders(token);
+    }
+    return listGoogleLogicalFolders(this);
+  }
+
+  async register_logical_folder(folder_name: string, drives: string[][]) {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      await backendSetLogicalFolder(token, folder_name, drives);
+      return;
+    }
+    await setGoogleLogicalFolder(this, folder_name, drives);
   }
 
   /**

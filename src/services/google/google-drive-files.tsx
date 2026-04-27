@@ -245,26 +245,32 @@ export async function downloadGoogleDriveFileBlob(
   return response.blob();
 }
 
-async function findGoogleAppStorageFile(drive: Drive, key: string) {
+type AppStorageFileEntry = { id: string; name: string; modifiedTime?: string };
+
+async function findGoogleAppStorageFile(
+  drive: Drive,
+  key: string,
+): Promise<{ canonical: AppStorageFileEntry | null; duplicates: AppStorageFileEntry[] }> {
   const query = encodeURIComponent(
-    `name = '${key.replace(/'/g, "\\'")}' and trashed = false`,
+    `name = '${key.replace(/'/g, "\\'")}'  and trashed = false`,
   );
   const fields = encodeURIComponent("files(id,name,modifiedTime)");
   const response = await authorizedFetch<{
-    files?: { id: string; name: string; modifiedTime?: string }[];
+    files?: AppStorageFileEntry[];
   }>(
     drive,
-    `${GOOGLE_DRIVE_API}/files?spaces=appDataFolder&q=${query}&fields=${fields}`,
+    `${GOOGLE_DRIVE_API}/files?spaces=appDataFolder&q=${query}&fields=${fields}&orderBy=modifiedTime+desc`,
   );
 
-  return response.files?.[0] || null;
+  const [canonical = null, ...duplicates] = response.files || [];
+  return { canonical, duplicates };
 }
 
 export async function readGoogleAppStorageJson<T>(
   drive: Drive,
   key: string,
 ): Promise<T | null> {
-  const file = await findGoogleAppStorageFile(drive, key);
+  const { canonical: file } = await findGoogleAppStorageFile(drive, key);
   if (!file?.id) {
     return null;
   }
@@ -291,7 +297,7 @@ export async function writeGoogleAppStorageJson<T>(
   key: string,
   value: T,
 ) {
-  const existingFile = await findGoogleAppStorageFile(drive, key);
+  const { canonical: existingFile, duplicates } = await findGoogleAppStorageFile(drive, key);
   const payload = new Blob([JSON.stringify(value, null, 2)], {
     type: "application/json",
   });
@@ -317,4 +323,13 @@ export async function writeGoogleAppStorageJson<T>(
     },
     body,
   });
+
+  // Silently delete any duplicate appData files (Tauri-only; best-effort).
+  for (const dup of duplicates) {
+    void authorizedFetch<void>(
+      drive,
+      `${GOOGLE_DRIVE_API}/files/${encodeURIComponent(dup.id)}`,
+      { method: "DELETE" },
+    ).catch(() => {});
+  }
 }

@@ -26,7 +26,21 @@ import {
   getSecret,
   setSecret,
 } from "../../services/security/secret-storage";
+import { isTauriRuntime } from "../../services/google/google-drive-http";
+import {
+  backendDriveAbout,
+  backendListChildren,
+  backendFileMetadata,
+  backendCreateFolder,
+  backendUploadFile,
+  backendDeleteItem,
+  backendCopyItem,
+  backendDownloadFile,
+  backendGetAppdataByName,
+  backendSetAppdataByName,
+} from "../../services/google/google-backend-client";
 import type { JSX } from "react";
+
 
 export interface GoogleDriveSettings extends DriveSettings {
   usageLimitPercent?: number;
@@ -171,21 +185,48 @@ export class GoogleDrive implements Drive {
     return this.access_token || null;
   }
 
+  /** Resolves a fresh access token, throwing if unavailable. */
+  private async resolveToken(): Promise<string> {
+    const token = await this.fetch_access_token();
+    if (!token) {
+      throw new Error("Unable to obtain Google access token");
+    }
+    return token;
+  }
+
   async refresh_drive_details(): Promise<DriveDetails> {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      this.drive_details = await backendDriveAbout(token);
+      SaveDrive(this);
+      return this.drive_details;
+    }
     this.drive_details = await fetchGoogleDriveAbout(this);
     SaveDrive(this);
     return this.drive_details;
   }
 
   async get_item_metadata(itemId: string): Promise<DriveItemMetadata> {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendFileMetadata(token, itemId);
+    }
     return fetchGoogleDriveFileMetadata(this, itemId);
   }
 
   async create_folder(name: string, parentId: string): Promise<DriveItemMetadata> {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendCreateFolder(token, name, parentId);
+    }
     return createGoogleDriveFolder(this, name, parentId);
   }
 
   async upload_file(file: File, parentId: string): Promise<DriveUploadResult> {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendUploadFile(token, file, parentId);
+    }
     return uploadGoogleDriveFile(this, file, parentId);
   }
 
@@ -193,39 +234,71 @@ export class GoogleDrive implements Drive {
     parentId: string,
     options?: { pageToken?: string; pageSize?: number },
   ) {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendListChildren(token, parentId, options);
+    }
     return listGoogleDriveChildren(this, parentId, options);
   }
 
   async delete_item(itemId: string) {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      await backendDeleteItem(token, itemId);
+      return;
+    }
     await deleteGoogleDriveItem(this, itemId);
   }
 
   async copy_item(itemId: string, parentId: string, name?: string) {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendCopyItem(token, itemId, parentId, name);
+    }
     return copyGoogleDriveItem(this, itemId, parentId, name);
   }
 
   async download_file(itemId: string) {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      return backendDownloadFile(token, itemId);
+    }
     return downloadGoogleDriveFileBlob(this, itemId);
   }
 
   async read_drive_settings() {
-    return readGoogleAppStorageJson<DriveSettings | null>(
-      this,
+    return this.read_app_storage_json<DriveSettings | null>(
       PER_DRIVE_SETTINGS_KEY,
     );
   }
 
   async write_drive_settings(settings: DriveSettings) {
-    await writeGoogleAppStorageJson(this, PER_DRIVE_SETTINGS_KEY, settings);
+    await this.write_app_storage_json(PER_DRIVE_SETTINGS_KEY, settings);
   }
 
   async read_app_storage_json<T>(key: string): Promise<T | null> {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      const raw = await backendGetAppdataByName(token, key);
+      if (raw === null) return null;
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        return null;
+      }
+    }
     return readGoogleAppStorageJson<T>(this, key);
   }
 
   async write_app_storage_json<T>(key: string, value: T): Promise<void> {
+    if (!isTauriRuntime()) {
+      const token = await this.resolveToken();
+      await backendSetAppdataByName(token, key, JSON.stringify(value));
+      return;
+    }
     await writeGoogleAppStorageJson(this, key, value);
   }
 }
 
 export default GoogleDrive;
+

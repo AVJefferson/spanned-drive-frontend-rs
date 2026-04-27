@@ -19,8 +19,8 @@ import { RetreivePersistentSession } from "../services/browser/retreive-persiste
 import { LogoutFromLocalStorage } from "../services/browser/logout.tsx";
 import { SaveDrive } from "../services/browser/save-drive.tsx";
 import {
-  mergeRemoteAppStorage,
-  readRemoteAppStorage,
+  readRemoteSessionState,
+  writeRemoteSessionState,
   type KnownSecondaryAccount,
 } from "../services/app-storage.ts";
 import {
@@ -154,7 +154,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     let cancelled = false;
-    readRemoteAppStorage(primaryDrive)
+    readRemoteSessionState(primaryDrive)
       .then((remoteState) => {
         if (cancelled) {
           return;
@@ -207,7 +207,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     syncingPersistedSession.current = persistedSessionKey;
-    void mergeRemoteAppStorage(session.primaryDrive, {
+    void writeRemoteSessionState(session.primaryDrive, {
       session: persistedSession,
       knownSecondaryAccounts: mergedKnownSecondaryAccounts,
     })

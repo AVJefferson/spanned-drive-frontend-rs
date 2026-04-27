@@ -4,7 +4,7 @@ import { useSession } from "../../../contexts/SessionContext";
 import { GoogleDrive } from "../../../contexts/drives/google-drive";
 import { FetchGoogleWebAccessTokenAndRefreshToken } from "../../../services/google/google-auth";
 import { SaveDrive } from "../../../services/browser/save-drive";
-import { decodeGoogleIdToken } from "../../../services/google/google-profile";
+import { backendFetchProfile } from "../../../services/google/google-backend-client";
 import {
   STORAGE_KEYS,
   removeLocalStorageKey,
@@ -109,11 +109,11 @@ export default function GoogleWebRedirect(params: any) {
       params.oauthParams.verifier,
     )
       .then(async (data) => {
-        if (!data?.access_token || !data?.id_token) {
+        if (!data?.access_token) {
           throw new Error("Missing Google token response");
         }
 
-        const user = decodeGoogleIdToken(data.id_token);
+        const user = await backendFetchProfile(data.access_token);
         if (!user?.email) {
           throw new Error("Unable to determine Google account email");
         }

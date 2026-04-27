@@ -24,7 +24,7 @@ import {
   MIN_CHUNK_SIZE_BYTES,
 } from "./LogicalFolderTypes";
 import { useSession } from "./SessionContext";
-import { mergeRemoteAppStorage, readRemoteAppStorage } from "../services/app-storage";
+import { readRemoteFoldersState, writeRemoteFoldersState } from "../services/app-storage";
 import { getOrCreateGoogleDriveFolderInParent } from "../services/google/google-drive-files";
 import {
   STORAGE_KEYS,
@@ -220,7 +220,7 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setIsReady(false);
 
-    readRemoteAppStorage(session.primaryDrive)
+    readRemoteFoldersState(session.primaryDrive)
       .then((remoteState) => {
         if (cancelled) {
           return;
@@ -286,7 +286,7 @@ export function LogicalFoldersProvider({ children }: { children: ReactNode }) {
     pendingSyncTimerRef.current = setTimeout(() => {
       pendingSyncTimerRef.current = null;
       lastSyncedManifestRef.current = manifestSignature;
-      void mergeRemoteAppStorage(driveSnapshot, {
+      void writeRemoteFoldersState(driveSnapshot, {
         logicalFolders,
       }).catch((error) => {
         // Allow next change to retry by clearing the cached signature.

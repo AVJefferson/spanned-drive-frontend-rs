@@ -5,7 +5,8 @@ export const STORAGE_KEYS = {
   tasks: "sdrive.tasks",
   taskCheckpoints: "sdrive.task-checkpoints",
   oauthParams: "sdrive.oauth-params",
-  remoteAppStateCache: "sdrive.remote-app-state-cache",
+  remoteSessionStateCache: "sdrive.remote-session-state-cache",
+  remoteFoldersStateCache: "sdrive.remote-folders-state-cache",
 } as const;
 
 const DRIVE_STORAGE_PREFIX = "sdrive.drive.";
@@ -76,7 +77,8 @@ export function clearSessionScopedStorage() {
       key === STORAGE_KEYS.tasks ||
       key === STORAGE_KEYS.taskCheckpoints ||
       key === STORAGE_KEYS.oauthParams ||
-      key === STORAGE_KEYS.remoteAppStateCache ||
+      key === STORAGE_KEYS.remoteSessionStateCache ||
+      key === STORAGE_KEYS.remoteFoldersStateCache ||
       key === "session"
     ) {
       keysToDelete.push(key);

@@ -199,6 +199,18 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
     SavePersistentSession(session);
 
+    // Don't write to remote storage until the initial hydration of known secondary
+    // accounts has completed for this primary drive. Writing before hydration would
+    // overwrite the stored list with an incomplete set, causing remembered-but-not-
+    // connected drives to be lost after an OAuth redirect.
+    const primaryDriveKey = createDriveKey(
+      session.primaryDrive.provider,
+      session.primaryDrive.email,
+    );
+    if (hydratedKnownSecondaryRef.current !== primaryDriveKey) {
+      return;
+    }
+
     if (
       lastSyncedPersistedSession.current === persistedSessionKey ||
       syncingPersistedSession.current === persistedSessionKey

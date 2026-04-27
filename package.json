@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "deploy": "tsc && vite build && node ./scripts/deploy.mjs",
+    "deploy": "tsc && vite build && deno run -A scripts/deploy.mjs",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -19,7 +19,7 @@
     "react-dom": "^19.2.5",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-opener": "^2.5.3",
-    "react-router-dom": "^7.14.1"
+    "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

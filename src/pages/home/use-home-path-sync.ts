@@ -133,7 +133,7 @@ export function useHomePathSync({
     });
 
     for (const segment of childPath) {
-      const childFolder = (foldersByParentId.get(pointerParentId) || []).find(
+      const childFolder:any = (foldersByParentId.get(pointerParentId) || []).find(
         (entry) => entry.name === segment,
       );
       if (!childFolder) {

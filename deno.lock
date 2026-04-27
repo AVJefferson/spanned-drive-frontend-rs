@@ -1,6 +1,10 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@std/fs@*": "1.0.23",
+    "jsr:@std/internal@^1.0.12": "1.0.13",
+    "jsr:@std/path@*": "1.1.4",
+    "jsr:@std/path@^1.1.4": "1.1.4",
     "npm:@emotion/cache@^11.14.0": "11.14.0",
     "npm:@emotion/react@^11.14.0": "11.14.0_react@19.2.5",
     "npm:@emotion/styled@^11.14.1": "11.14.1_@emotion+react@11.14.0__react@19.2.5_react@19.2.5",
@@ -12,10 +16,28 @@
     "npm:@types/react@^19.2.14": "19.2.14",
     "npm:@vitejs/plugin-react@^4.7.0": "4.7.0_vite@7.3.2",
     "npm:react-dom@^19.2.5": "19.2.5_react@19.2.5",
-    "npm:react-router-dom@^7.14.1": "7.14.1_react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:react-router-dom@^7.14.2": "7.14.2_react@19.2.5_react-dom@19.2.5__react@19.2.5",
     "npm:react@^19.2.5": "19.2.5",
     "npm:typescript@~5.8.3": "5.8.3",
     "npm:vite@^7.3.2": "7.3.2"
+  },
+  "jsr": {
+    "@std/fs@1.0.23": {
+      "integrity": "3ecbae4ce4fee03b180fa710caff36bb5adb66631c46a6460aaad49515565a37",
+      "dependencies": [
+        "jsr:@std/internal",
+        "jsr:@std/path@^1.1.4"
+      ]
+    },
+    "@std/internal@1.0.13": {
+      "integrity": "2f9546691d4ac2d32859c82dff284aaeac980ddeca38430d07941e7e288725c0"
+    },
+    "@std/path@1.1.4": {
+      "integrity": "1d2d43f39efb1b42f0b1882a25486647cb851481862dc7313390b2bb044314b5",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    }
   },
   "npm": {
     "@babel/code-frame@7.29.0": {
@@ -1065,16 +1087,16 @@
     "react-refresh@0.17.0": {
       "integrity": "sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ=="
     },
-    "react-router-dom@7.14.1_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
-      "integrity": "sha512-ZkrQuwwhGibjQLqH1eCdyiZyLWglPxzxdl5tgwgKEyCSGC76vmAjleGocRe3J/MLfzMUIKwaFJWpFVJhK3d2xA==",
+    "react-router-dom@7.14.2_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+      "integrity": "sha512-YZcM5ES8jJSM+KrJ9BdvHHqlnGTg5tH3sC5ChFRj4inosKctdyzBDhOyyHdGk597q2OT6NTrCA1OvB/YDwfekQ==",
       "dependencies": [
         "react",
         "react-dom",
         "react-router"
       ]
     },
-    "react-router@7.14.1_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
-      "integrity": "sha512-5BCvFskyAAVumqhEKh/iPhLOIkfxcEUz8WqFIARCkMg8hZZzDYX9CtwxXA0e+qT8zAxmMC0x3Ckb9iMONwc5jg==",
+    "react-router@7.14.2_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+      "integrity": "sha512-yCqNne6I8IB6rVCH7XUvlBK7/QKyqypBFGv+8dj4QBFJiiRX+FG7/nkdAvGElyvVZ/HQP5N19wzteuTARXi5Gw==",
       "dependencies": [
         "cookie",
         "react",
@@ -1224,7 +1246,7 @@
         "npm:@types/react@^19.2.14",
         "npm:@vitejs/plugin-react@^4.7.0",
         "npm:react-dom@^19.2.5",
-        "npm:react-router-dom@^7.14.1",
+        "npm:react-router-dom@^7.14.2",
         "npm:react@^19.2.5",
         "npm:typescript@~5.8.3",
         "npm:vite@^7.3.2"

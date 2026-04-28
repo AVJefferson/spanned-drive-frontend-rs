@@ -1,0 +1,15 @@
+User-agent: *
+Disallow: /
+
+# Allow access to necessary pages
+Allow: /signin
+Allow: /privacy
+Allow: /terms
+
+# Allow access to assets for SPA rendering
+Allow: /assets/
+Allow: /favicon.png
+Allow: /sitemap.xml
+
+
+Sitemap: https://sdrive.avje.in/sitemap.xml

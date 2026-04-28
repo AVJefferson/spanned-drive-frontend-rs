@@ -6,35 +6,32 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
+import { TermsPage } from "./pages/agreements/terms";
+import { PrivacyPage } from "./pages/agreements/privacy";
+import { OauthRedirectPages } from "./pages/oauth-redirect";
+import { ErrorPage } from "./pages/error";
+
 import "./App.css";
 
-import {
-  HomePage,
-  ErrorPage,
-  SignInPage,
-  TermsPage,
-  PrivacyPage,
-  OauthRedirectPages,
-} from "./pages";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { useSettings } from "./contexts/SettingsContext";
-import { createAppTheme } from "./theme/create-app-theme";
-import { HomeProviders } from "./pages/home/home-providers";
+import { createAppTheme } from "./components/create-app-theme";
+import { ErrorBoundary } from "./components/error-boundary";
+
+import { useSettings } from "./contexts/settings-context";
 
 function App() {
-  const { settings } = useSettings();
+  const { theme } = useSettings();
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
 
   const mode = useMemo(() => {
-    if (settings.theme === "dark") return "dark";
-    if (settings.theme === "light") return "light";
+    if (theme === "dark") return "dark";
+    if (theme === "light") return "light";
     return prefersDarkMode ? "dark" : "light";
-  }, [settings.theme, prefersDarkMode]);
+  }, [theme, prefersDarkMode]);
 
-  const theme = useMemo(() => createAppTheme(mode), [mode]);
+  const appTheme = useMemo(() => createAppTheme(mode), [mode]);
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <main>
         <ErrorBoundary
@@ -42,21 +39,21 @@ function App() {
           message="A page crashed while rendering. Try again or reload the app."
         >
           <Routes>
-            <Route
-              path="/"
-              element={
-                <HomeProviders>
-                  <HomePage />
-                </HomeProviders>
-              }
-            />
-            <Route path="/error" element={<ErrorPage />} />
-            <Route path="/signin" element={<SignInPage />} />
+            {/* <Route path="/" element={<HomePage />} />
+            <Route path="/signin" element={<SignInPage />} /> */}
+
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/terms/:date" element={<TermsPage />} />
+
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/privacy/:date" element={<PrivacyPage />} />
-            <Route path="/oauth/redirect/:provider" element={<OauthRedirectPages />} />
+
+            <Route
+              path="/oauth/redirect/:provider"
+              element={<OauthRedirectPages />}
+            />
+
+            <Route path="/error" element={<ErrorPage />} />
             <Route path="*" element={<h1>404 - Not found</h1>} />
           </Routes>
         </ErrorBoundary>

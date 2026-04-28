@@ -211,6 +211,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const logoutPrimaryDrive = useCallback(() => {
+    writeLocalStorageJson(STORAGE_KEYS.primaryDrive, {
+      provider: session.primaryDrive?.provider,
+      email: session.primaryDrive?.email,
+    });
     setSession(defaultSession);
     writeLocalStorageJson(STORAGE_KEYS.session, { defaultSession });
   }, []);

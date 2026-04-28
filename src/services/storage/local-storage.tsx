@@ -1,6 +1,8 @@
 export const STORAGE_KEYS = {
   session: "sdrive.session",
   settings: "sdrive.settings",
+  primaryDrive: "sdrive.primary-drive",
+
   logicalFolders: "sdrive.logical-folders",
   tasks: "sdrive.tasks",
   taskCheckpoints: "sdrive.task-checkpoints",

@@ -1,13 +1,15 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { STORAGE_KEYS } from "../../services/storage/local-storage";
 import { getDriveImplementation } from "../../drives";
 
 export const OauthRedirectPages = () => {
   const { provider } = useParams();
-  if (!provider) return <h1>Invalid provider</h1>;
+  const navigate = useNavigate();
+
+  if (!provider) return <h1>Invalid Provider</h1>;
 
   const DriveImplementation = getDriveImplementation(provider);
-  if (!DriveImplementation?.oauth_callback) {
+  if (!DriveImplementation?.oauthCallback) {
     return <h1>Provider not found</h1>;
   }
 
@@ -23,8 +25,12 @@ export const OauthRedirectPages = () => {
     oauthParams: oauthParamsRaw ? JSON.parse(oauthParamsRaw) : {},
   };
 
-  const Callback = DriveImplementation.oauth_callback;
-  return <Callback params={params} />;
+  DriveImplementation.oauthCallback(params).then((result) => {
+    if (!result) navigate("/error?error=OAuth Callback Failed. Please try again.");
+    else navigate("/");
+  });
+
+  return <h1>Please wait while we are processing OAuth callback...</h1>;
 };
 
 export default OauthRedirectPages;

@@ -29,3 +29,6 @@ export function writeLocalStorageJson<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
   return value;
 }
+export function removeLocalStorageKey(key: string) {
+  localStorage.removeItem(key);
+}

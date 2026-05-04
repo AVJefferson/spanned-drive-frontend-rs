@@ -1,0 +1,45 @@
+import GoogleDrive from ".";
+import { useRuntime } from "../../contexts/runtime-context";
+import { tauriInvokeWithSdriveBackendFallback } from "./client";
+
+export interface GoogleTokenResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token?: string;
+  scope?: string;
+  id_token?: string;
+}
+
+export async function getGoogleRefreshToken(
+  code: string,
+  codeVerifier: string,
+): Promise<GoogleTokenResponse> {
+  const url = `/token/${GoogleDrive.provider}/refresh_token`;
+  const response =
+    await tauriInvokeWithSdriveBackendFallback<GoogleTokenResponse>(
+      "get_google_refresh_token",
+      {
+        code,
+        codeVerifier,
+        redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
+      },
+      `/token/${GoogleDrive.provider}/refresh_token`,
+    );
+
+  return response;
+}
+
+export async function getGoogleAccessToken(
+  refresh_token: string,
+): Promise<GoogleTokenResponse> {
+  const url = `/token/${GoogleDrive.provider}/access_token`;
+
+  const response =
+    await tauriInvokeWithSdriveBackendFallback<GoogleTokenResponse>(
+      "get_google_access_token",
+      { refresh_token },
+      `/token/${GoogleDrive.provider}/access_token`,
+    );
+
+  return response;
+}

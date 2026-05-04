@@ -1,9 +1,19 @@
-import type { ComponentType, JSX } from "react";
+import type { JSX } from "react";
+export { type JSX } from "react";
 
-export interface Drive {
+export interface DriveReference {
   provider: string;
   email: string;
+
+  refreshToken?: string;
+  refreshTime?: number;
 }
+
+export interface DriveSnapshot extends DriveReference {
+  
+}
+
+export type Drive = DriveSnapshot;
 
 export interface OauthCallbackParams {
   provider: string;
@@ -16,20 +26,16 @@ export type DriveConstructor = (new (
   data: Record<string, unknown>,
 ) => Drive) & {
   provider: string;
-  provider_label: string;
+  providerLabel: string;
 
-  provider_icon: () => JSX.Element;
+  providerIcon: JSX.Element;
 
-  oauth_redirect: (props: {
-    accountType: "primary" | "secondary";
-    hint?: string;
-  }) => void;
-
-  oauth_callback: ComponentType<{ params: OauthCallbackParams }>;
+  oauthRedirect: (accountType: "primary" | "secondary", hint?: string) => void;
+  oauthCallback: (params: OauthCallbackParams) => Promise<boolean>;
 };
 
 const DriveImplementations: Record<string, { default: DriveConstructor }> =
-  import.meta.glob("./*/drive.tsx", { eager: true }) as Record<
+  import.meta.glob("./*/index.tsx", { eager: true }) as Record<
     string,
     { default: DriveConstructor }
   >;

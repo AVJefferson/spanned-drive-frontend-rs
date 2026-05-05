@@ -6,6 +6,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
+import { HomePage } from "./pages/home";
 import { SignInPage } from "./pages/signin";
 import { TermsPage } from "./pages/agreements/terms";
 import { PrivacyPage } from "./pages/agreements/privacy";
@@ -40,7 +41,7 @@ function App() {
           message="A page crashed while rendering. Try again or reload the app."
         >
           <Routes>
-            {/* {/* <Route path="/" element={<HomePage />} /> */}
+            <Route path="/" element={<HomePage />} />
             <Route path="/signin" element={<SignInPage />} />
 
             <Route path="/terms" element={<TermsPage />} />

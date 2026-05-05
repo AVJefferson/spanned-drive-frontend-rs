@@ -52,9 +52,17 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
   const [runtime, setRuntime] = useState<RuntimeInfo>(defaultRuntime);
 
   useEffect(() => {
-    detectRuntime().then((info) => {
-      setRuntime(info);
-    });
+    let isCurrent = true;
+
+    async function load() {
+      const info = await detectRuntime();
+      if (isCurrent) setRuntime(info);
+    }
+
+    load();
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   const value = useMemo(() => runtime, [runtime]);

@@ -6,7 +6,6 @@ import {
   ReactNode,
   useCallback,
   useMemo,
-  useRef,
 } from "react";
 
 import {
@@ -14,12 +13,21 @@ import {
   readLocalStorageJson,
   writeLocalStorageJson,
 } from "../services/storage/local-storage";
+import { getDrive } from "../drives/utils";
 
 export interface DriveSession {
   provider: string;
   email: string;
   refreshToken: string | undefined;
-  refreshTime: number;
+  refreshTime: number | undefined;
+}
+
+function sanitizeDriveSession(drive: DriveSession) {
+  return {
+    ...drive,
+    refreshToken: undefined,
+    refreshTime: undefined,
+  };
 }
 
 export interface Session {
@@ -29,7 +37,7 @@ export interface Session {
   setPrimaryDrive: (
     provider: string,
     email: string,
-    refreshToken: string,
+    refreshToken: string | undefined,
   ) => void;
 
   addSecondaryDrive: (
@@ -48,6 +56,18 @@ export interface Session {
   logoutPrimaryDrive: () => void;
 }
 
+function sanitizeSession(session: Session) {
+  return {
+    ...session,
+    primaryDrive: session.primaryDrive
+      ? sanitizeDriveSession(session.primaryDrive)
+      : undefined,
+    secondaryDrives: session.secondaryDrives
+      ? session.secondaryDrives.map(sanitizeDriveSession)
+      : undefined,
+  };
+}
+
 const defaultSession: Session = {
   primaryDrive: undefined,
   secondaryDrives: undefined,
@@ -64,19 +84,89 @@ const defaultSession: Session = {
 const initializeSessionFromLocalStorage = (): Session =>
   readLocalStorageJson(STORAGE_KEYS.session, defaultSession);
 
+async function loadSessionDrives(session: Session): Promise<Session> {
+  let newSession: Session = {
+    ...session,
+    primaryDrive: undefined,
+    secondaryDrives: undefined,
+  };
+
+  if (
+    session.primaryDrive &&
+    session.primaryDrive.provider &&
+    session.primaryDrive.email
+  ) {
+    let primaryDrive = await getDrive({
+      provider: session.primaryDrive.provider,
+      email: session.primaryDrive.email,
+    });
+
+    if (primaryDrive && primaryDrive.provider && primaryDrive.email) {
+      newSession.primaryDrive = {
+        provider: primaryDrive.provider,
+        email: primaryDrive.email,
+        refreshToken: primaryDrive.refreshToken || undefined,
+        refreshTime: primaryDrive.refreshTime || undefined,
+      };
+    }
+  }
+
+  if (session.secondaryDrives) {
+    newSession.secondaryDrives = [];
+    for (const drive of session.secondaryDrives) {
+      if (drive.provider && drive.email) {
+        let secondaryDrive = await getDrive({
+          provider: drive.provider,
+          email: drive.email,
+        });
+
+        if (secondaryDrive && secondaryDrive.provider && secondaryDrive.email) {
+          newSession.secondaryDrives.push({
+            provider: secondaryDrive.provider,
+            email: secondaryDrive.email,
+            refreshToken: secondaryDrive.refreshToken || undefined,
+            refreshTime: secondaryDrive.refreshTime || undefined,
+          });
+        }
+      } else {
+        newSession.secondaryDrives.push(drive);
+      }
+    }
+  }
+
+  return newSession;
+}
+
 const SessionContext = createContext<Session>(defaultSession);
 
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session>(
     initializeSessionFromLocalStorage(),
   );
+  const [sessionChanged, setSessionChanged] = useState(1);
 
   useEffect(() => {
-    writeLocalStorageJson(STORAGE_KEYS.session, session);
-  }, [session]);
+    let cancelled = false;
+    writeLocalStorageJson(STORAGE_KEYS.session, sanitizeSession(session));
+    loadSessionDrives(session).then((newSession) => {
+      if (cancelled) return;
+      console.log({ session, newSession });
+      if (
+        !newSession ||
+        !newSession.primaryDrive ||
+        !newSession.secondaryDrives
+      )
+        return;
+      setSession(newSession);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionChanged]);
 
   const setPrimaryDrive = useCallback(
-    (provider: string, email: string, refreshToken: string) => {
+    (provider: string, email: string, refreshToken: string | undefined) => {
       setSession((prev) => {
         if (!prev) return defaultSession;
         if (prev.primaryDrive) return prev;
@@ -87,23 +177,19 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             provider,
             email,
             refreshToken,
-            refreshTime: Date.now(),
+            refreshTime: refreshToken ? Date.now() : undefined,
           },
         };
 
         return newSession;
       });
+      setSessionChanged(sessionChanged * -1);
     },
     [],
   );
 
   const addSecondaryDrive = useCallback(
-    (
-      provider: string,
-      email: string,
-      refreshToken: string | undefined,
-      refreshTime: number | undefined,
-    ) => {
+    (provider: string, email: string, refreshToken: string | undefined) => {
       setSession((prev) => {
         if (!prev) return defaultSession;
         if (!prev.primaryDrive) return prev;
@@ -127,7 +213,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             provider,
             email,
             refreshToken,
-            refreshTime: refreshTime || Date.now(),
+            refreshTime: refreshToken ? Date.now() : undefined,
           };
         }
 
@@ -139,7 +225,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
               provider,
               email,
               refreshToken,
-              refreshTime: refreshTime || Date.now(),
+              refreshTime: refreshToken ? Date.now() : undefined,
             },
           ];
         }
@@ -151,6 +237,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         return newSession;
       });
+      setSessionChanged(sessionChanged * -1);
     },
     [],
   );
@@ -173,6 +260,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         return newSession;
       });
+      setSessionChanged(sessionChanged * -1);
     },
     [],
   );
@@ -206,16 +294,19 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         return newSession;
       });
+      setSessionChanged(sessionChanged * -1);
     },
     [],
   );
 
   const logoutPrimaryDrive = useCallback(() => {
+    console.log("logout primary drive");
     writeLocalStorageJson(STORAGE_KEYS.primaryDrive, {
       provider: session.primaryDrive?.provider,
       email: session.primaryDrive?.email,
     });
     setSession(defaultSession);
+    setSessionChanged(sessionChanged * -1);
     writeLocalStorageJson(STORAGE_KEYS.session, { defaultSession });
   }, []);
 

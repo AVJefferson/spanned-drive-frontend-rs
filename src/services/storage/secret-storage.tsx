@@ -18,6 +18,8 @@ export async function setSecret(
   key: string,
   value: string,
 ): Promise<boolean> {
+  service = service.toLowerCase();
+  key = encodeURIComponent(key);
   if (isTauriRuntime()) {
     try {
       return await invokeSecret<boolean>("set_secret", {
@@ -38,6 +40,8 @@ export async function setSecretWithBrowserFallback(
   key: string,
   value: string,
 ): Promise<boolean> {
+  service = service.toLowerCase();
+  key = encodeURIComponent(key);
   if (isTauriRuntime() && (await setSecret(service, key, value))) {
     return true;
   }
@@ -50,6 +54,8 @@ export async function setSecretWithBrowserFallback(
 }
 
 export async function getSecret(service: string, key: string) {
+  service = service.toLowerCase();
+  key = encodeURIComponent(key);
   try {
     return await invokeSecret<string>("get_secret", {
       service,
@@ -59,9 +65,7 @@ export async function getSecret(service: string, key: string) {
     console.warn(`Failed to get secret from secure storage for key "${key}".`);
     let value = readLocalStorageJson<string>(`secret--${service}--${key}`, "");
     if (!value) {
-      throw new Error(
-        `No secret found in fallback storage for key "${key}". This may be expected if the secret was previously stored in secure storage.`,
-      );
+      return "";
     }
     return value;
   }

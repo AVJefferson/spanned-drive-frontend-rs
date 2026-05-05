@@ -31,7 +31,7 @@ export async function getDrive(driveRef: DriveReference) {
     driveRef,
   );
 
-  drive.refreshToken = await getSecret(getSecretStorageDriveKey(driveRef), "");
+  drive.refreshToken = await getSecret("sdrive.drives", getSecretStorageDriveKey(driveRef));
 
   return drive;
 }

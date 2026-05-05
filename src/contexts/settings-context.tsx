@@ -40,7 +40,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
     writeLocalStorageJson(STORAGE_KEYS.settings, settings);
+    return () => {
+      cancelled = true;
+    };
   }, [settings]);
 
   const value = useMemo<AppSettings>(

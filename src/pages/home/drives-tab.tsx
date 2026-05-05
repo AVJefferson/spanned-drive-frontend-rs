@@ -16,7 +16,10 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { type DriveSession, useSession } from "../../contexts/session-context";
 import { Drives, getDriveImplementation } from "../../drives";
 
-import { AddSecondaryDriveDialog, ConfirmDriveActionDialog } from "./home-dialogs";
+import {
+  AddSecondaryDriveDialog,
+  ConfirmDriveActionDialog,
+} from "./home-dialogs";
 
 export interface DrivesTabProps {
   isMobile?: boolean;
@@ -63,10 +66,13 @@ export default function DrivesTab({ isMobile = false }: DrivesTabProps) {
   const [logoutTarget, setLogoutTarget] = useState<DriveSession | null>(null);
   const [forgetTarget, setForgetTarget] = useState<DriveSession | null>(null);
 
-  const loggedInSecondaries = session.secondaryDrives?.filter((drive) => drive.refreshToken) || [];
-  const loggedOutSecondaries = session.secondaryDrives?.filter((drive) => !drive.refreshToken) || [];
+  const loggedInSecondaries =
+    session.secondaryDrives?.filter((drive) => drive.refreshToken) || [];
+  const loggedOutSecondaries =
+    session.secondaryDrives?.filter((drive) => !drive.refreshToken) || [];
 
-  const totalConnected = (session.primaryDrive ? 1 : 0) + loggedInSecondaries.length;
+  const totalConnected =
+    (session.primaryDrive ? 1 : 0) + loggedInSecondaries.length;
   const totalProviders = useMemo(
     () =>
       new Set(
@@ -86,23 +92,15 @@ export default function DrivesTab({ isMobile = false }: DrivesTabProps) {
         alignItems={{ xs: "stretch", sm: "center" }}
         justifyContent="space-between"
       >
-        <Stack spacing={0.5}>
-          <Typography variant="overline" color="text.secondary">
-            Drives
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-            Connected accounts
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Stack drives from any provider. Spanned Drive routes new uploads to
-            whichever has free room.
-          </Typography>
-        </Stack>
         <Button
           variant="contained"
           startIcon={PlusIcon}
           onClick={() => setAddOpen(true)}
-          sx={{ borderRadius: 999, fontWeight: 700, alignSelf: { sm: "center" } }}
+          sx={{
+            borderRadius: 999,
+            fontWeight: 700,
+            alignSelf: { sm: "center" },
+          }}
         >
           Add drive
         </Button>
@@ -113,14 +111,7 @@ export default function DrivesTab({ isMobile = false }: DrivesTabProps) {
         spacing={1.5}
         useFlexGap
         sx={{ flexWrap: "wrap" }}
-      >
-        <StatChip label="Connected" value={String(totalConnected)} />
-        <StatChip label="Providers" value={String(totalProviders)} />
-        <StatChip
-          label="Remembered"
-          value={String(loggedOutSecondaries.length)}
-        />
-      </Stack>
+      ></Stack>
 
       {session.primaryDrive ? (
         <PrimaryDriveCard drive={session.primaryDrive} />
@@ -281,7 +272,10 @@ function StatChip({ label, value }: { label: string; value: string }) {
       >
         {label}
       </Typography>
-      <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1, mt: 0.25 }}>
+      <Typography
+        variant="h5"
+        sx={{ fontWeight: 800, lineHeight: 1.1, mt: 0.25 }}
+      >
         {value}
       </Typography>
     </Box>
@@ -333,7 +327,11 @@ function PrimaryDriveCard({ drive }: { drive: DriveSession }) {
               </Box>
               <Typography
                 variant="overline"
-                sx={{ fontWeight: 700, letterSpacing: 1, color: "text.secondary" }}
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  color: "text.secondary",
+                }}
               >
                 Primary drive
               </Typography>
@@ -347,7 +345,9 @@ function PrimaryDriveCard({ drive }: { drive: DriveSession }) {
           </Stack>
         </Stack>
 
-        <Divider sx={{ my: 2, borderColor: alpha(theme.palette.divider, 0.5) }} />
+        <Divider
+          sx={{ my: 2, borderColor: alpha(theme.palette.divider, 0.5) }}
+        />
 
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -500,7 +500,9 @@ function RememberedDriveCard({
           <Button
             size="small"
             variant="outlined"
-            onClick={() => Implementation?.oauthRedirect("secondary", drive.email)}
+            onClick={() =>
+              Implementation?.oauthRedirect("secondary", drive.email)
+            }
             sx={{ borderRadius: 999, fontWeight: 700 }}
           >
             Sign in

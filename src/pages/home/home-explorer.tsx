@@ -128,18 +128,7 @@ export function HomeExplorer({ isMobile }: HomeExplorerProps) {
         alignItems={{ xs: "stretch", sm: "center" }}
         justifyContent="space-between"
       >
-        <Stack spacing={0.5}>
-          <Typography variant="overline" color="text.secondary">
-            Files
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-            Your spanned library
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Upload large files and we will split them across your connected
-            drives automatically.
-          </Typography>
-        </Stack>
+
 
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
           <Button

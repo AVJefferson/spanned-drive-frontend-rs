@@ -20,7 +20,10 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 import { useRuntime } from "../../contexts/runtime-context";
 import { useSession } from "../../contexts/session-context";
-import { useSettings, type ThemePreference } from "../../contexts/settings-context";
+import {
+  useSettings,
+  type ThemePreference,
+} from "../../contexts/settings-context";
 import { getDriveImplementation } from "../../drives";
 
 import { ConfirmDriveActionDialog } from "./home-dialogs";
@@ -46,18 +49,6 @@ export function TasksTab() {
 
   return (
     <Stack spacing={{ xs: 2, md: 2.5 }}>
-      <Stack spacing={0.5}>
-        <Typography variant="overline" color="text.secondary">
-          Tasks
-        </Typography>
-        <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-          Background activity
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Uploads, downloads and chunk operations show up here while they run.
-        </Typography>
-      </Stack>
-
       <Card
         sx={{
           borderRadius: 6,
@@ -77,10 +68,7 @@ export function TasksTab() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                bgcolor: alpha(
-                  theme.palette.primary.main,
-                  isDark ? 0.15 : 0.1,
-                ),
+                bgcolor: alpha(theme.palette.primary.main, isDark ? 0.15 : 0.1),
                 color: theme.palette.primary.main,
               }}
             >
@@ -147,15 +135,6 @@ export function AccountTab() {
 
   return (
     <Stack spacing={{ xs: 2, md: 2.5 }}>
-      <Stack spacing={0.5}>
-        <Typography variant="overline" color="text.secondary">
-          Account
-        </Typography>
-        <Typography variant="h5" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-          Profile and preferences
-        </Typography>
-      </Stack>
-
       <Card
         sx={{
           borderRadius: 6,

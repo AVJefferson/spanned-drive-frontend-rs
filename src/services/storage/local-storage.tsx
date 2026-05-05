@@ -32,3 +32,7 @@ export function writeLocalStorageJson<T>(key: string, value: T) {
 export function removeLocalStorageKey(key: string) {
   localStorage.removeItem(key);
 }
+
+export function clearLocalStorage() {
+  localStorage.clear();
+}

@@ -29,6 +29,15 @@ export async function getGoogleRefreshToken(
   return response;
 }
 
+export function revokeGoogleRefreshToken(token: string) {
+  const url = `/token/${GoogleDrive.provider}/revoke_token`;
+  return tauriInvokeWithSdriveBackendFallback(
+    "revoke_google_refresh_token",
+    { token },
+    `/token/${GoogleDrive.provider}/revoke_token`,
+  );
+}
+
 export async function getGoogleAccessToken(
   refresh_token: string,
 ): Promise<GoogleTokenResponse> {

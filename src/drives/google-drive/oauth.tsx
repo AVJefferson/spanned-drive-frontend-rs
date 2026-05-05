@@ -1,5 +1,5 @@
 import { GoogleDrive } from ".";
-import { getGoogleRefreshToken } from "./auth";
+import { getGoogleRefreshToken, revokeGoogleRefreshToken } from "./auth";
 import { OauthCallbackParams } from "..";
 import {
   STORAGE_KEYS,
@@ -63,8 +63,23 @@ export function GoogleOauthRedirect(
   });
 }
 
-export function GoogleOauthLogout(token: string) {
-  
+export async function GoogleOauthLogout(token: string) {
+  if (!token) {
+    console.error("No token provided for Google logout");
+    return;
+  }
+
+  await revokeGoogleRefreshToken(token)
+    .then(() => {
+      console.log("Google refresh token revoked successfully");
+    })
+    .catch((error) => {
+      console.error("Failed to revoke Google refresh token:", error);
+    });
+
+  removeLocalStorageKey(STORAGE_KEYS.oauthParams);
+
+  // Also remove stored keys for this drive. But cannot figure out the key from the token, hence need a drive reference that needs to be passed around instead
 }
 
 export async function GoogleOauthCallback(params: OauthCallbackParams) {

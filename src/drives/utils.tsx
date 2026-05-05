@@ -11,6 +11,7 @@ import {
 export function sanitizeDriveSnapshot(drive: Drive) {
   return {
     ...drive,
+    providerIcon: undefined,
     refreshToken: undefined,
     accessToken: undefined,
     accessTokenExpiry: undefined,
@@ -31,23 +32,23 @@ export async function getDrive(driveRef: DriveReference) {
     driveRef,
   );
 
-  drive.refreshToken = await getSecret("sdrive.drives", getSecretStorageDriveKey(driveRef));
+  drive.refreshToken = await getSecret(
+    "sdrive.drives",
+    getSecretStorageDriveKey(driveRef),
+  );
+  if (!drive.refreshToken) drive.refreshToken = undefined;
 
   return drive;
 }
 
 export function saveDrive(drive: Drive) {
-  if (drive.refreshToken) {
-    setSecretWithBrowserFallback(
-      "sdrive.drives",
-      getSecretStorageDriveKey(drive),
-      drive.refreshToken,
-    );
-    writeLocalStorageJson(
-      getLocalStorageDriveKey(drive),
-      sanitizeDriveSnapshot(drive),
-    );
-  } else {
-    writeLocalStorageJson(getLocalStorageDriveKey(drive), drive);
-  }
+  setSecretWithBrowserFallback(
+    "sdrive.drives",
+    getSecretStorageDriveKey(drive),
+    drive.refreshToken || "",
+  );
+  writeLocalStorageJson(
+    getLocalStorageDriveKey(drive),
+    sanitizeDriveSnapshot(drive),
+  );
 }

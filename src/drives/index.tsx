@@ -12,9 +12,7 @@ export interface DriveReference {
   accessTokenExpiry?: number;
 }
 
-export interface DriveSnapshot extends DriveReference {
-  
-}
+export interface DriveSnapshot extends DriveReference {}
 
 export type Drive = DriveSnapshot;
 
@@ -30,6 +28,7 @@ export type OauthCallbackResult = {
   provider?: string;
   email?: string;
   refreshToken?: string;
+  accountType: "primary" | "secondary";
 };
 
 export type DriveConstructor = (new (

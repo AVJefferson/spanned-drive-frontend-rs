@@ -53,11 +53,19 @@ export const OauthRedirectPages = () => {
     )
       navigate("/error?error=OAuth Callback Failed. Please try again.");
     else {
+      if (result.accountType === "primary") {
       session.setPrimaryDrive(
-        result.provider,
-        result.email,
-        result.refreshToken,
-      );
+          result.provider,
+          result.email,
+          result.refreshToken,
+        );
+      } else {
+        session.addSecondaryDrive(
+          result.provider,
+          result.email,
+          result.refreshToken,
+        );
+      }
       navigate("/");
     }
   });

@@ -188,6 +188,7 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
         provider: GoogleDrive.provider,
         email: user.email,
         refreshToken: tokenResponse.refresh_token,
+        accountType,
       };
     });
   } catch (error) {

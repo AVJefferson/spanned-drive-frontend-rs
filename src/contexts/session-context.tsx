@@ -32,7 +32,7 @@ function sanitizeDriveSession(drive: DriveSession) {
 
 export interface Session {
   primaryDrive: DriveSession | undefined;
-  secondaryDrives: DriveSession[] | undefined;
+  secondaryDrives: DriveSession[];
 
   setPrimaryDrive: (
     provider: string,
@@ -44,7 +44,6 @@ export interface Session {
     provider: string,
     email: string,
     refreshToken: string | undefined,
-    refreshTime: number | undefined,
   ) => void;
 
   removeSecondaryDrive: (provider: string, email: string) => void;
@@ -64,13 +63,13 @@ function sanitizeSession(session: Session) {
       : undefined,
     secondaryDrives: session.secondaryDrives
       ? session.secondaryDrives.map(sanitizeDriveSession)
-      : undefined,
+      : [],
   };
 }
 
 const defaultSession: Session = {
   primaryDrive: undefined,
-  secondaryDrives: undefined,
+  secondaryDrives: [],
 
   setPrimaryDrive: () => {},
   addSecondaryDrive: () => {},
@@ -88,7 +87,7 @@ async function loadSessionDrives(session: Session): Promise<Session> {
   let newSession: Session = {
     ...session,
     primaryDrive: undefined,
-    secondaryDrives: undefined,
+    secondaryDrives: [],
   };
 
   if (

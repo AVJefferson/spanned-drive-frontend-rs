@@ -1,5 +1,4 @@
 import GoogleDrive from ".";
-import { useRuntime } from "../../contexts/runtime-context";
 import { tauriInvokeWithSdriveBackendFallback } from "./client";
 
 export interface GoogleTokenResponse {
@@ -14,7 +13,6 @@ export async function getGoogleRefreshToken(
   code: string,
   codeVerifier: string,
 ): Promise<GoogleTokenResponse> {
-  const url = `/token/${GoogleDrive.provider}/refresh_token`;
   const response =
     await tauriInvokeWithSdriveBackendFallback<GoogleTokenResponse>(
       "get_google_refresh_token",
@@ -30,7 +28,6 @@ export async function getGoogleRefreshToken(
 }
 
 export function revokeGoogleRefreshToken(token: string) {
-  const url = `/token/${GoogleDrive.provider}/revoke_token`;
   return tauriInvokeWithSdriveBackendFallback(
     "revoke_google_refresh_token",
     { token },
@@ -41,8 +38,6 @@ export function revokeGoogleRefreshToken(token: string) {
 export async function getGoogleAccessToken(
   refresh_token: string,
 ): Promise<GoogleTokenResponse> {
-  const url = `/token/${GoogleDrive.provider}/access_token`;
-
   const response =
     await tauriInvokeWithSdriveBackendFallback<GoogleTokenResponse>(
       "get_google_access_token",

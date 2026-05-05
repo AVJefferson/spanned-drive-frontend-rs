@@ -58,7 +58,7 @@ export async function tauriInvokeWithSdriveBackendFallback<T>(
     }
   }
 
-  return sdriveBackendPost<T>(fallbackPath, payload);
+  return await sdriveBackendPost<T>(fallbackPath, payload);
 }
 
 export default tauriInvokeWithSdriveBackendFallback;

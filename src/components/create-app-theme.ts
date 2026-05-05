@@ -8,7 +8,6 @@ export function createAppTheme(mode: PaletteMode) {
     '"SF Pro Text"',
     '"Roboto"',
     '"Noto Sans"',
-    '"Helvetica Neue"',
     "Arial",
     "sans-serif",
   ].join(", ");
@@ -20,7 +19,6 @@ export function createAppTheme(mode: PaletteMode) {
     '"SF Pro Display"',
     '"Roboto"',
     '"Noto Sans"',
-    '"Helvetica Neue"',
     "Arial",
     "sans-serif",
   ].join(", ");

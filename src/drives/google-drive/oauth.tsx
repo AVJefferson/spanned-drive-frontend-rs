@@ -83,6 +83,11 @@ export async function GoogleOauthLogout(token: string) {
 }
 
 export async function GoogleOauthCallback(params: OauthCallbackParams) {
+  console.log(
+    "GoogleOauthCallback",
+    { params },
+    JSON.stringify(params, null, 2),
+  );
   const oauthParams = params.oauthParams as {
     timestamp?: number;
     nonce?: string;
@@ -97,7 +102,7 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
     !oauthParams?.verifier
   ) {
     console.error("OAuth context is missing required parameters");
-    return false;
+    return { success: false };
   }
 
   if (
@@ -107,7 +112,7 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
     !params?.queryParams?.scope
   ) {
     console.error("OAuth callback is missing required parameters");
-    return false;
+    return { success: false };
   }
 
   if (
@@ -115,13 +120,12 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
     oauthParams.provider !== GoogleDrive.provider
   ) {
     console.error("OAuth callback provider does not match expected provider");
-    return false;
+    return { success: false };
   }
 
   if (params.queryParams.iss !== "https://accounts.google.com") {
     console.error("OAuth callback has an invalid issuer");
-
-    return false;
+    return { success: false };
   }
 
   try {
@@ -131,7 +135,7 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
 
     if (nonceFromState !== oauthParams.nonce) {
       console.error("OAuth callback has an invalid state parameter");
-      return false;
+      return { success: false };
     }
 
     const requiredScopes = [
@@ -147,20 +151,28 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
 
     if (missingScopes.length > 0) {
       console.error("OAuth callback is missing required scopes");
-      return false;
+      return { success: false };
     }
 
-    await getGoogleRefreshToken(
+    return await getGoogleRefreshToken(
       params.queryParams.code,
       oauthParams.verifier,
     ).then(async (tokenResponse) => {
+      console.log(
+        "Google token response",
+        { tokenResponse },
+        { oauthParams },
+        JSON.stringify(tokenResponse, null, 2),
+      );
       if (!tokenResponse.refresh_token) {
-        throw new Error("Missing Google token response");
+        console.error("Missing Google token response");
+        return { success: false };
       }
 
       const user = await getUserProfile(tokenResponse.access_token);
       if (!user?.email) {
-        throw new Error("Unable to determine Google account email");
+        console.error("Unable to determine Google account email");
+        return { success: false };
       }
 
       const drive = new GoogleDrive({
@@ -170,11 +182,11 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
 
       saveDrive(drive);
       removeLocalStorageKey(STORAGE_KEYS.oauthParams);
+
+      return { success: true, provider: GoogleDrive.provider, email: user.email, refreshToken: tokenResponse.refresh_token };
     });
   } catch (error) {
     console.error("OAuth callback failed with error:", error);
-    return false;
+    return { success: false };
   }
-
-  return false;
 }

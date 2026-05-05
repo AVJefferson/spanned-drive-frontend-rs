@@ -25,6 +25,13 @@ export interface OauthCallbackParams {
   oauthParams: Record<string, unknown>;
 }
 
+export type OauthCallbackResult = {
+  success: boolean;
+  provider?: string;
+  email?: string;
+  refreshToken?: string;
+};
+
 export type DriveConstructor = (new (
   data: Record<string, unknown>,
 ) => Drive) & {
@@ -34,7 +41,7 @@ export type DriveConstructor = (new (
   providerIcon: JSX.Element;
 
   oauthRedirect: (accountType: "primary" | "secondary", hint?: string) => void;
-  oauthCallback: (params: OauthCallbackParams) => Promise<boolean>;
+  oauthCallback: (params: OauthCallbackParams) => Promise<OauthCallbackResult>;
 };
 
 const DriveImplementations: Record<string, { default: DriveConstructor }> =

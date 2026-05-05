@@ -14,7 +14,7 @@ export async function getUserProfile(
   const response =
     await tauriInvokeWithSdriveBackendFallback<GoogleUserProfile>(
       "get_google_profile",
-      { accessToken },
+      { access_token: accessToken },
       `/profile/${GoogleDrive.provider}`,
     );
 

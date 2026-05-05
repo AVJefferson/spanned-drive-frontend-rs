@@ -1,4 +1,4 @@
-import { Drive, JSX, OauthCallbackParams } from "..";
+import { Drive, JSX, OauthCallbackParams, OauthCallbackResult } from "..";
 import { GoogleOauthCallback, GoogleOauthRedirect } from "./oauth";
 import { googleDriveIcon } from "./icons";
 
@@ -17,7 +17,7 @@ export class GoogleDrive implements Drive {
     hint?: string,
   ) => void = GoogleOauthRedirect;
 
-  static oauthCallback: (params: OauthCallbackParams) => Promise<boolean> =
+  static oauthCallback: (params: OauthCallbackParams) => Promise<OauthCallbackResult> =
     GoogleOauthCallback;
 
   email: string;

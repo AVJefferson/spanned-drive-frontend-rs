@@ -1,9 +1,15 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { STORAGE_KEYS } from "../../services/storage/local-storage";
+import {
+  STORAGE_KEYS,
+  readLocalStorageJson,
+  writeLocalStorageJson,
+} from "../../services/storage/local-storage";
 import { getDriveImplementation } from "../../drives";
+import { useSession } from "../../contexts/session-context";
 
 export const OauthRedirectPages = () => {
   const { provider } = useParams();
+  const session = useSession();
   const navigate = useNavigate();
 
   if (!provider) return <h1>Invalid Provider</h1>;
@@ -25,9 +31,32 @@ export const OauthRedirectPages = () => {
     oauthParams: oauthParamsRaw ? JSON.parse(oauthParamsRaw) : {},
   };
 
+  const oauthParamsOnce = readLocalStorageJson(
+    STORAGE_KEYS.oauthParams + "-once",
+    false,
+  );
+  if (oauthParamsOnce) {
+    return <h1>OAuth callback already processed</h1>;
+  }
+  writeLocalStorageJson(STORAGE_KEYS.oauthParams + "-once", true);
+
   DriveImplementation.oauthCallback(params).then((result) => {
-    if (!result) navigate("/error?error=OAuth Callback Failed. Please try again.");
-    else navigate("/");
+    writeLocalStorageJson(STORAGE_KEYS.oauthParams + "-once", false);
+    if (
+      !result.success ||
+      !result.provider ||
+      !result.email ||
+      !result.refreshToken
+    )
+      navigate("/error?error=OAuth Callback Failed. Please try again.");
+    else {
+      session.setPrimaryDrive(
+        result.provider,
+        result.email,
+        result.refreshToken,
+      );
+      navigate("/");
+    }
   });
 
   return <h1>Please wait while we are processing OAuth callback...</h1>;

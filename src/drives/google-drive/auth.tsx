@@ -18,7 +18,7 @@ export async function getGoogleRefreshToken(
       "get_google_refresh_token",
       {
         code,
-        codeVerifier,
+        code_verifier: codeVerifier,
         redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
       },
       `/token/${GoogleDrive.provider}/refresh_token`,
@@ -36,12 +36,12 @@ export function revokeGoogleRefreshToken(token: string) {
 }
 
 export async function getGoogleAccessToken(
-  refresh_token: string,
+  refreshToken: string,
 ): Promise<GoogleTokenResponse> {
   const response =
     await tauriInvokeWithSdriveBackendFallback<GoogleTokenResponse>(
       "get_google_access_token",
-      { refresh_token },
+      { refresh_token: refreshToken },
       `/token/${GoogleDrive.provider}/access_token`,
     );
 

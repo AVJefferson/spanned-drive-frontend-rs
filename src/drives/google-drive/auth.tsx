@@ -19,7 +19,7 @@ export async function getGoogleRefreshToken(
       {
         code,
         code_verifier: codeVerifier,
-        redirect_uri: import.meta.env.VITE_GOOGLE_REDIRECT_URI,
+        redirect_uri: GoogleDrive.redirectUri,
       },
       `/token/${GoogleDrive.provider}/refresh_token`,
     );

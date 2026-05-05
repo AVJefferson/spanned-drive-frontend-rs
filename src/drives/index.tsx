@@ -38,6 +38,8 @@ export type DriveConstructor = (new (
   provider: string;
   providerLabel: string;
 
+  redirectUri: string;
+
   providerIcon: JSX.Element;
 
   oauthRedirect: (accountType: "primary" | "secondary", hint?: string) => void;

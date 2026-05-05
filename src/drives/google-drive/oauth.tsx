@@ -15,7 +15,7 @@ export function GoogleOauthRedirect(
   state: string = "primary",
   hint: string = "",
 ) {
-  let url = `${GOOGLE_OAUTH_URI}/auth?client_id=${encodeURIComponent(import.meta.env.VITE_GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(import.meta.env.VITE_GOOGLE_REDIRECT_URI)}&response_type=code&prompt=consent&access_type=offline`;
+  let url = `${GOOGLE_OAUTH_URI}/auth?client_id=${encodeURIComponent(import.meta.env.VITE_GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(GoogleDrive.redirectUri)}&response_type=code&prompt=consent&access_type=offline`;
 
   url +=
     "&scope=" +
@@ -183,7 +183,12 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
       saveDrive(drive);
       removeLocalStorageKey(STORAGE_KEYS.oauthParams);
 
-      return { success: true, provider: GoogleDrive.provider, email: user.email, refreshToken: tokenResponse.refresh_token };
+      return {
+        success: true,
+        provider: GoogleDrive.provider,
+        email: user.email,
+        refreshToken: tokenResponse.refresh_token,
+      };
     });
   } catch (error) {
     console.error("OAuth callback failed with error:", error);

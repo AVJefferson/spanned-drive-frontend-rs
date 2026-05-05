@@ -9,6 +9,9 @@ export class GoogleDrive implements Drive {
   static providerLabel = "Google Drive";
   providerLabel = GoogleDrive.providerLabel;
 
+  static redirectUri = `${import.meta.env.VITE_REDIRECT_URI}/${GoogleDrive.provider}`;
+  redirectUri = GoogleDrive.redirectUri;
+
   static providerIcon = googleDriveIcon;
   providerIcon = GoogleDrive.providerIcon;
 

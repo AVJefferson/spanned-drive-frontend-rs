@@ -1,8 +1,6 @@
-import { useRuntime } from "../../contexts/runtime-context";
+import { isTauriRuntime } from "../../contexts/runtime-context";
 import { readLocalStorageJson, writeLocalStorageJson } from "./local-storage";
 import { invoke } from "@tauri-apps/api/core";
-
-const runtime = useRuntime();
 
 async function invokeSecret<T>(
   command: string,
@@ -20,7 +18,7 @@ export async function setSecret(
   key: string,
   value: string,
 ): Promise<boolean> {
-  if (runtime.kind === "tauri") {
+  if (isTauriRuntime()) {
     try {
       return await invokeSecret<boolean>("set_secret", {
         service,
@@ -40,7 +38,7 @@ export async function setSecretWithBrowserFallback(
   key: string,
   value: string,
 ): Promise<boolean> {
-  if (runtime.kind === "tauri" && (await setSecret(service, key, value))) {
+  if (isTauriRuntime() && (await setSecret(service, key, value))) {
     return true;
   }
 

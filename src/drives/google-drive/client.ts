@@ -1,5 +1,5 @@
 import GoogleDrive from ".";
-import { useRuntime } from "../../contexts/runtime-context";
+import { isTauriRuntime } from "../../contexts/runtime-context";
 
 const sdriveBackendUrl = import.meta.env.VITE_SDRIVE_BACKEND_URL;
 const sdriveBackendAuthToken = import.meta.env.VITE_SDRIVE_BACKEND_AUTH_TOKEN;
@@ -10,8 +10,6 @@ const sdriveBackendHeaders = {
     ? { Authorization: `Bearer ${sdriveBackendAuthToken}` }
     : {}),
 };
-
-const runtime = useRuntime();
 
 export async function sdriveBackendPost<T>(
   path: string,
@@ -47,7 +45,7 @@ export async function tauriInvokeWithSdriveBackendFallback<T>(
   payload: any,
   fallbackPath: string,
 ): Promise<T> {
-  if (runtime.kind === "tauri") {
+  if (isTauriRuntime()) {
     try {
       return await tauriInvoke<T>(command, payload);
     } catch (e) {

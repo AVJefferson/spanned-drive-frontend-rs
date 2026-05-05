@@ -7,6 +7,9 @@ export interface DriveReference {
 
   refreshToken?: string;
   refreshTime?: number;
+
+  accessToken?: string;
+  accessTokenExpiry?: number;
 }
 
 export interface DriveSnapshot extends DriveReference {

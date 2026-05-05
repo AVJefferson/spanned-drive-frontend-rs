@@ -33,15 +33,18 @@ export const OauthRedirectPages = () => {
 
   const oauthParamsOnce = readLocalStorageJson(
     STORAGE_KEYS.oauthParams + "-once",
-    false,
+    0,
   );
-  if (oauthParamsOnce) {
-    return <h1>OAuth callback already processed</h1>;
+  if (
+    oauthParamsOnce &&
+    oauthParamsOnce > Date.now() - 1000 * 60 * 5 /** 5 minutes */
+  ) {
+    return <h1>OAuth callback already processed. Please wait 5 minutes before trying again.</h1>;
   }
-  writeLocalStorageJson(STORAGE_KEYS.oauthParams + "-once", true);
+  writeLocalStorageJson(STORAGE_KEYS.oauthParams + "-once", Date.now());
 
   DriveImplementation.oauthCallback(params).then((result) => {
-    writeLocalStorageJson(STORAGE_KEYS.oauthParams + "-once", false);
+    writeLocalStorageJson(STORAGE_KEYS.oauthParams + "-once", 0);
     if (
       !result.success ||
       !result.provider ||

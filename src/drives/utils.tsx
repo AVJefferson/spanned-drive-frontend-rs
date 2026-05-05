@@ -1,4 +1,4 @@
-import { Drive } from "./index";
+import { Drive, DriveReference } from "./index";
 import {
   setSecretWithBrowserFallback,
   getSecret,
@@ -11,41 +11,43 @@ import {
 export function sanitizeDriveSnapshot(drive: Drive) {
   return {
     ...drive,
-    refresh_token: "",
-    access_token: undefined,
-    expires_in: undefined,
+    refreshToken: undefined,
+    accessToken: undefined,
+    accessTokenExpiry: undefined,
   };
 }
 
-function getDriveStorageKey(provider: string, email: string) {
-  return `drive.refresh-token:${encodeURIComponent(provider)}::${encodeURIComponent(email)}`;
+export function getLocalStorageDriveKey(driveRef: DriveReference) {
+  return `drive.${encodeURIComponent(driveRef.provider)}::${encodeURIComponent(driveRef.email)}`;
 }
 
-export async function getDrive(provider: string, email: string) {
-  const secretKey = getDriveStorageKey(provider, email);
-  let drive = readLocalStorageJson<Drive>(secretKey, { provider, email });
+export function getSecretStorageDriveKey(driveRef: DriveReference) {
+  return `drive.refresh-token:${encodeURIComponent(driveRef.provider)}::${encodeURIComponent(driveRef.email)}`;
+}
 
-  try {
-    const refreshToken = getSecret("sdrive.drives", secretKey);
-    if (refreshToken) {
-      drive.refreshToken = await refreshToken;
-    }
-  } catch {}
+export async function getDrive(driveRef: DriveReference) {
+  let drive = readLocalStorageJson<Drive>(
+    getLocalStorageDriveKey(driveRef),
+    driveRef,
+  );
+
+  drive.refreshToken = await getSecret(getSecretStorageDriveKey(driveRef), "");
 
   return drive;
 }
 
 export function saveDrive(drive: Drive) {
-  const secretKey = getDriveStorageKey(drive.provider, drive.email);
-
   if (drive.refreshToken) {
     setSecretWithBrowserFallback(
       "sdrive.drives",
-      secretKey,
+      getSecretStorageDriveKey(drive),
       drive.refreshToken,
     );
-    writeLocalStorageJson(secretKey, sanitizeDriveSnapshot(drive));
+    writeLocalStorageJson(
+      getLocalStorageDriveKey(drive),
+      sanitizeDriveSnapshot(drive),
+    );
   } else {
-    writeLocalStorageJson(secretKey, sanitizeDriveSnapshot(drive));
+    writeLocalStorageJson(getLocalStorageDriveKey(drive), drive);
   }
 }

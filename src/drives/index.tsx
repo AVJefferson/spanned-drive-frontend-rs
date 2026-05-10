@@ -28,7 +28,7 @@ export type OauthCallbackResult = {
   provider?: string;
   email?: string;
   refreshToken?: string;
-  accountType: "primary" | "secondary";
+  accountType?: "primary" | "secondary";
 };
 
 export type DriveConstructor = (new (

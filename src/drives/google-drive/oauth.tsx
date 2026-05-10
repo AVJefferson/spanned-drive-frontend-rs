@@ -1,6 +1,6 @@
 import { GoogleDrive } from ".";
 import { getGoogleRefreshToken, revokeGoogleRefreshToken } from "./auth";
-import { OauthCallbackParams } from "..";
+import { OauthCallbackParams, OauthCallbackResult } from "..";
 import {
   STORAGE_KEYS,
   writeLocalStorageJson,
@@ -82,7 +82,7 @@ export async function GoogleOauthLogout(token: string) {
   // Also remove stored keys for this drive. But cannot figure out the key from the token, hence need a drive reference that needs to be passed around instead
 }
 
-export async function GoogleOauthCallback(params: OauthCallbackParams) {
+export async function GoogleOauthCallback(params: OauthCallbackParams) : Promise<OauthCallbackResult> {
   console.log(
     "GoogleOauthCallback",
     { params },
@@ -188,7 +188,7 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) {
         provider: GoogleDrive.provider,
         email: user.email,
         refreshToken: tokenResponse.refresh_token,
-        accountType,
+        accountType: accountType as "primary" | "secondary",
       };
     });
   } catch (error) {

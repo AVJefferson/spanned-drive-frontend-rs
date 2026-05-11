@@ -17,9 +17,9 @@ export interface DriveSnapshot extends DriveReference {}
 
 export interface DriveInterface extends DriveSnapshot {
   session?: {
-    createSession: (session: Session) => Promise<Session>;
+    createSession: (session: Session) => Promise<Session | undefined>;
     getSession: () => Promise<Session | undefined>;
-    updateSession: (session: Session) => Promise<Session>;
+    updateSession: (session: Session) => Promise<Session | undefined>;
   };
 
   drive?: {

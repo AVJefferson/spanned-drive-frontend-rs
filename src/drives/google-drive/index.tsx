@@ -3,6 +3,7 @@ import { GoogleOauthCallback, GoogleOauthRedirect } from "./oauth";
 import { googleDriveIcon } from "./icons";
 import drive from "./drive";
 import logicalFolder from "./logical-folder";
+import session from "./session";
 import { getAccessToken } from "./auth";
 
 export class GoogleDrive implements Drive {
@@ -39,6 +40,7 @@ export class GoogleDrive implements Drive {
   getAccessToken: (this: GoogleDrive, expires_in?: number) => Promise<string> =
     getAccessToken;
 
+  session = session;
   logicalFolder = logicalFolder;
   drive = drive;
 

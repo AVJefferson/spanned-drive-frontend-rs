@@ -1,6 +1,9 @@
-import { Drive, JSX, OauthCallbackParams, OauthCallbackResult } from "..";
+import { Drive, OauthCallbackParams, OauthCallbackResult } from "..";
 import { GoogleOauthCallback, GoogleOauthRedirect } from "./oauth";
 import { googleDriveIcon } from "./icons";
+import drive from "./drive";
+import logicalFolder from "./logical-folder";
+import { getAccessToken } from "./auth";
 
 export class GoogleDrive implements Drive {
   static provider = "google-drive";
@@ -19,14 +22,25 @@ export class GoogleDrive implements Drive {
     accountType: "primary" | "secondary",
     hint?: string,
   ) => void = GoogleOauthRedirect;
+  oauthRedirect = GoogleOauthRedirect;
 
-  static oauthCallback: (params: OauthCallbackParams) => Promise<OauthCallbackResult> =
-    GoogleOauthCallback;
+  static oauthCallback: (
+    params: OauthCallbackParams,
+  ) => Promise<OauthCallbackResult> = GoogleOauthCallback;
+  oauthCallback = GoogleOauthCallback;
 
   email: string;
 
   refreshToken: string;
   refreshTime: number;
+
+  accessToken?: string | undefined;
+  accessTokenExpiry?: number | undefined;
+  getAccessToken: (this: GoogleDrive, expires_in?: number) => Promise<string> =
+    getAccessToken;
+
+  logicalFolder = logicalFolder;
+  drive = drive;
 
   constructor(data: Record<string, unknown>) {
     this.email = data.email as string;

@@ -14,7 +14,21 @@ export interface DriveReference {
 
 export interface DriveSnapshot extends DriveReference {}
 
-export type Drive = DriveSnapshot;
+export interface DriveInterface extends DriveSnapshot {
+  drive?: {
+    setAsPrimary: () => Promise<boolean>;
+    getSecondaryDrives: () => Promise<DriveSnapshot[]>;
+    createSecondaryDrive: (secondaryDrive: DriveSnapshot) => Promise<boolean>;
+  };
+  logicalFolder?: {
+    getLogicalFolders: () => Promise<string[]>;
+    createLogicalFolder: (name: string) => Promise<string>;
+    deleteLogicalFolder: (id: string) => Promise<void>;
+    renameLogicalFolder: (id: string, name: string) => Promise<void>;
+  };
+}
+
+export type Drive = DriveInterface;
 
 export interface OauthCallbackParams {
   provider: string;

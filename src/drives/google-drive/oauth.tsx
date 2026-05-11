@@ -82,7 +82,9 @@ export async function GoogleOauthLogout(token: string) {
   // Also remove stored keys for this drive. But cannot figure out the key from the token, hence need a drive reference that needs to be passed around instead
 }
 
-export async function GoogleOauthCallback(params: OauthCallbackParams) : Promise<OauthCallbackResult> {
+export async function GoogleOauthCallback(
+  params: OauthCallbackParams,
+): Promise<OauthCallbackResult> {
   console.log(
     "GoogleOauthCallback",
     { params },
@@ -196,3 +198,5 @@ export async function GoogleOauthCallback(params: OauthCallbackParams) : Promise
     return { success: false };
   }
 }
+
+

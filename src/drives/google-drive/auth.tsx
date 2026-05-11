@@ -47,3 +47,24 @@ export async function getGoogleAccessToken(
 
   return response;
 }
+
+export async function getAccessToken(
+  this: GoogleDrive,
+  expires_in: number = 5000 /* 5 seconds */,
+): Promise<string> {
+  try {
+    if (
+      !this.accessToken ||
+      (this.accessTokenExpiry &&
+        this.accessTokenExpiry < Date.now() + expires_in)
+    ) {
+      const tokenResponse = await getGoogleAccessToken(this.refreshToken);
+      this.accessToken = tokenResponse.access_token;
+      this.accessTokenExpiry = tokenResponse.expires_in;
+    }
+    return this.accessToken || "";
+  } catch (error) {
+    console.error("Error getting access token:", error);
+    return "";
+  }
+}

@@ -14,6 +14,7 @@ import {
   writeLocalStorageJson,
 } from "../services/storage/local-storage";
 import { getDrive } from "../drives/utils";
+import { DriveInterface } from "../drives";
 
 export interface DriveSession {
   provider: string;
@@ -31,6 +32,9 @@ function sanitizeDriveSession(drive: DriveSession) {
 }
 
 export interface Session {
+  lastModified: number;
+  fileId: string;
+
   primaryDrive: DriveSession | undefined;
   secondaryDrives: DriveSession[];
 
@@ -68,6 +72,9 @@ function sanitizeSession(session: Session) {
 }
 
 const defaultSession: Session = {
+  lastModified: 0,
+  fileId: "",
+
   primaryDrive: undefined,
   secondaryDrives: [],
 
@@ -82,6 +89,33 @@ const defaultSession: Session = {
 
 const initializeSessionFromLocalStorage = (): Session =>
   readLocalStorageJson(STORAGE_KEYS.session, defaultSession);
+
+async function syncSessionDrives(session: Session): Promise<Session> {
+  if (!session.primaryDrive) return session;
+
+  const primaryDrive = await getDrive({
+    provider: session.primaryDrive.provider,
+    email: session.primaryDrive.email,
+  });
+
+  let cloudSession = await primaryDrive?.session?.getSession();
+  if (!cloudSession) {
+    let newCloudSession = await primaryDrive?.session?.createSession(session);
+    if (newCloudSession) return newCloudSession;
+    return session;
+  } else {
+    if (
+      cloudSession.lastModified >
+      session.lastModified + 5000 /* over 5 seconds ago */
+    )
+      return cloudSession;
+    else {
+      let newCloudSession = await primaryDrive?.session?.updateSession(session);
+      if (newCloudSession) return newCloudSession;
+      return session;
+    }
+  }
+}
 
 async function loadSessionDrives(session: Session): Promise<Session> {
   let newSession: Session = {
@@ -172,17 +206,24 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         const newSession: Session = {
           ...prev,
+          lastModified: Date.now(),
           primaryDrive: {
             provider,
             email,
             refreshToken,
             refreshTime: refreshToken ? Date.now() : undefined,
           },
+          secondaryDrives: [],
         };
 
         return newSession;
       });
-      setSessionChanged(sessionChanged * -1);
+
+      // Pull secondary Drives from primarydrive cloud
+      syncSessionDrives(session).then((newSession) => {
+        setSession(newSession);
+        setSessionChanged(sessionChanged * -1);
+      });
     },
     [],
   );
@@ -231,12 +272,17 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         const newSession: Session = {
           ...prev,
+          lastModified: Date.now(),
           secondaryDrives: newSecondaryDrives,
         };
 
         return newSession;
       });
-      setSessionChanged(sessionChanged * -1);
+
+      syncSessionDrives(session).then((newSession) => {
+        setSession(newSession);
+        setSessionChanged(sessionChanged * -1);
+      });
     },
     [],
   );
@@ -254,6 +300,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         const newSession: Session = {
           ...prev,
+          lastModified: Date.now(),
           secondaryDrives: newSecondaryDrives,
         };
 
@@ -288,6 +335,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
         const newSession: Session = {
           ...prev,
+          lastModified: Date.now(),
           secondaryDrives: newSecondaryDrives,
         };
 

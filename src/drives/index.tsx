@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { Session } from "../contexts/session-context";
 export { type JSX } from "react";
 
 export interface DriveReference {
@@ -15,11 +16,18 @@ export interface DriveReference {
 export interface DriveSnapshot extends DriveReference {}
 
 export interface DriveInterface extends DriveSnapshot {
+  session?: {
+    createSession: (session: Session) => Promise<Session>;
+    getSession: () => Promise<Session | undefined>;
+    updateSession: (session: Session) => Promise<Session>;
+  };
+
   drive?: {
     setAsPrimary: () => Promise<boolean>;
     getSecondaryDrives: () => Promise<DriveSnapshot[]>;
     createSecondaryDrive: (secondaryDrive: DriveSnapshot) => Promise<boolean>;
   };
+
   logicalFolder?: {
     getLogicalFolders: () => Promise<string[]>;
     createLogicalFolder: (name: string) => Promise<string>;

@@ -1,0 +1,53 @@
+name: sdrive-frontend
+
+services:
+  frontend-dev:
+    image: sdrive-frontend:dev
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: docker/dockerfile
+    profiles:
+      - builder
+      - dev
+    ports:
+      - "4000:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  frontend-stg:
+    image: sdrive-frontend:stg
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: docker/dockerfile
+    profiles:
+      - builder
+      - stg
+    ports:
+      - "4001:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  frontend-prd:
+    image: sdrive-frontend:prd
+    pull_policy: never
+    build:
+      context: ..
+      dockerfile: docker/dockerfile
+    profiles:
+      - builder
+      - prd
+    ports:
+      - "4002:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

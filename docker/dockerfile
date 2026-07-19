@@ -1,0 +1,7 @@
+FROM dhi.io/httpd:2.4
+
+COPY docker/conf/httpd.conf /usr/local/apache2/conf/httpd.conf
+COPY --chown=www-data:www-data dist/ /usr/local/apache2/htdocs/
+
+USER www-data
+EXPOSE 3000

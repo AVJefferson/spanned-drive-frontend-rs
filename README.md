@@ -34,6 +34,15 @@ The deploy script is environment-driven and works across Linux/macOS/CI runners.
 - target directory cleanup
 - recursive copy of `dist` contents into `DEPLOY_TARGET_DIR`
 
+### Docker (DHI Apache)
+
+Minimal non-root Apache image serves prebuilt `dist/` on port `3000`.
+
+1. `docker login dhi.io`
+2. Build web assets (env vars set): `deno task build`
+3. `docker compose -f docker/docker-compose.yml up --build`
+4. Open `http://localhost:3000`
+
 ## Architecture Notes
 
 - [State ownership and boundaries](docs/architecture/state-ownership.md)

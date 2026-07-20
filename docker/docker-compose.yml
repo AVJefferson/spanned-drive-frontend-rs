@@ -4,6 +4,7 @@ services:
   frontend-dev:
     image: sdrive-frontend:dev
     pull_policy: never
+    container_name: sdrive-frontend-dev
     build:
       context: ..
       dockerfile: docker/dockerfile
@@ -17,10 +18,12 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    restart: unless-stopped
 
   frontend-stg:
     image: sdrive-frontend:stg
     pull_policy: never
+    container_name: sdrive-frontend-stg
     build:
       context: ..
       dockerfile: docker/dockerfile
@@ -34,10 +37,12 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
-
+    restart: unless-stopped
+    
   frontend-prd:
     image: sdrive-frontend:prd
     pull_policy: never
+    container_name: sdrive-frontend-prd
     build:
       context: ..
       dockerfile: docker/dockerfile
@@ -51,3 +56,4 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    restart: unless-stopped

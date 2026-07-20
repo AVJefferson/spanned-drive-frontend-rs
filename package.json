@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:dev": "tsc && vite build --mode development",
     "deploy": "tsc && vite build && deno run --allow-env=DEPLOY_TARGET_DIR --allow-read=./dist scripts/deploy.mjs",
     "preview": "vite preview",
     "tauri": "tauri"

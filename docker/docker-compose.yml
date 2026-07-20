@@ -7,12 +7,14 @@ services:
     container_name: sdrive-frontend-dev
     build:
       context: ..
-      dockerfile: docker/dockerfile
+      dockerfile: docker/dockerfile.runtime
     profiles:
       - builder
       - dev
     ports:
       - "4000:3000"
+    volumes:
+      - ../dist:/usr/local/apache2/htdocs:ro
     read_only: true
     tmpfs:
       - /tmp
@@ -26,19 +28,21 @@ services:
     container_name: sdrive-frontend-stg
     build:
       context: ..
-      dockerfile: docker/dockerfile
+      dockerfile: docker/dockerfile.runtime
     profiles:
       - builder
       - stg
     ports:
       - "4001:3000"
+    volumes:
+      - ../dist:/usr/local/apache2/htdocs:ro
     read_only: true
     tmpfs:
       - /tmp
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
-    
+
   frontend-prd:
     image: sdrive-frontend:prd
     pull_policy: never

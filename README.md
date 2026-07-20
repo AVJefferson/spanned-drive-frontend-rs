@@ -36,12 +36,16 @@ The deploy script is environment-driven and works across Linux/macOS/CI runners.
 
 ### Docker (DHI Apache)
 
-Minimal non-root Apache image serves prebuilt `dist/` on port `3000`.
+Minimal non-root Apache serves prebuilt `dist/`.
 
 1. `docker login dhi.io`
 2. Build web assets (env vars set): `deno task build`
-3. `docker compose -f docker/docker-compose.yml up --build`
-4. Open `http://localhost:3000`
+3. Start a profile:
+   - Dev (host `dist/` volume, live): `docker compose --profile dev -f docker/docker-compose.yml up --build` → `http://localhost:4000`
+   - Stg (host `dist/` volume, live): `docker compose --profile stg -f docker/docker-compose.yml up --build` → `http://localhost:4001`
+   - Prd (`dist/` baked into image): `docker compose --profile prd -f docker/docker-compose.yml up --build` → `http://localhost:4002`
+
+Dev/stg remount host `dist/` read-only — rebuild assets on host, no image rebuild. Prd needs `--build` after each new `dist/` for security bake-in.
 
 ## Architecture Notes
 

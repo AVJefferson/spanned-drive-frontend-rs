@@ -19,8 +19,12 @@ function clearConsole() {
 }
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig(async ({ mode }) => ({
   plugins: [react(), clearConsole()],
+
+  build: {
+    minify: mode !== "development",
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
